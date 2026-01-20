@@ -61,6 +61,12 @@ Lightweight rule-based and probability-based insights generation:
 - **Public API Endpoints**: Integrate anomaly detection and predictions into your apps
 - **API Key Management**: Secure access with per-seller API keys
 - **Usage Tracking**: Monitor API calls, response times, and success rates
+- **Opinionated Defaults**: Each tier comes with optimized settings (window size, cache TTL, batch limits)
+- **Insight Summaries**: One-click comprehensive health reports with recommendations
+- **One-Click Export**: PDF and email export functionality for reports
+- **Embeddable Widgets**: Copy-paste HTML/React code for embedding analytics in your apps
+- **Confidence-Aware Messaging**: Context-sensitive messages based on data quality and confidence levels
+- **Data-Driven Configuration**: All thresholds, tiers, and alert levels stored in database tables
 
 ## Getting Started
 
@@ -278,12 +284,40 @@ Response:
 - Optimistic UI updates
 
 ### Rate Limiting & Pricing Tiers
-- **Free**: 1,000 calls/hour
-- **Basic**: 10,000 calls/hour
-- **Pro**: 100,000 calls/hour
-- **Enterprise**: Unlimited
+- **Free**: 1,000 calls/hour, 256 window size, 60s cache, 100 batch limit, 5 prediction steps
+- **Basic**: 10,000 calls/hour, 512 window size, 30s cache, 500 batch limit, 10 prediction steps, export enabled
+- **Pro**: 100,000 calls/hour, 512 window size, 10s cache, 1000 batch limit, 20 prediction steps, webhooks enabled
+- **Enterprise**: Unlimited calls, 1024 window size, 5s cache, 5000 batch limit, 50 prediction steps, custom features
 
 Rate limits reset hourly. Exceeded limits return 429 status with reset time.
+
+### Configuration System
+All system parameters are data-driven and stored in database tables:
+
+**Tier Configuration** (`tier_config`):
+- API call limits
+- Window sizes
+- Cache TTL
+- Batch sizes
+- Prediction steps
+- Feature flags
+
+**Alert Configuration** (`alert_config`):
+- Trigger types (anomaly_score, health_score, prediction_confidence, data_sufficiency)
+- Threshold ranges
+- Severity levels
+- Message templates
+- Enable/disable flags
+
+**Threshold Configuration** (`threshold_config`):
+- Anomaly weights (deviation: 0.4, periodic: 0.3, HFD: 0.3)
+- Health weights (volatility: 0.25, anomaly: 0.35, risk: 0.25, consistency: 0.15)
+- Data sufficiency thresholds (insufficient: <50, minimal: 50-99, adequate: 100-299, optimal: 300+)
+- Fingerprint thresholds (bot HFD: 1.8, bot entropy: 0.1, manipulation HFD: 1.6)
+- Prediction confidence minimum: 0.5
+- Trend acceleration threshold: 5
+
+All thresholds can be updated in the database without code changes.
 
 ## Technical Details
 
@@ -382,6 +416,30 @@ Actions:
 - **No Overlap**: Separate actual and predicted data series
 - **Time Window Display**: Clear indication of analysis time range
 
+### Performance Optimizations
+- **Ring Buffer Pattern**: Fixed-size contiguous arrays (conceptual implementation in Edge Functions)
+- **Zero Object Churn**: Preallocated data structures, no per-event allocations
+- **Temporal Locality**: `lastComputedAt` timestamps for probabilistic refresh
+- **Lazy Computation**: Metrics computed only when queried, not on every event
+- **Efficient Indexing**: Database indexes on temporal queries for fast lookups
+
+### Confidence & Sufficiency Messaging
+Context-aware messages based on data quality:
+- **Insufficient**: "Insufficient data for reliable predictions. Results may be inaccurate."
+- **Minimal**: "Limited data available. Predictions have reduced accuracy."
+- **Low Confidence (<0.5)**: "Low confidence prediction. Consider collecting more data."
+- **Moderate Confidence (0.5-0.7)**: "Moderate confidence. Predictions are reasonably reliable."
+- **High Confidence (>0.7)**: "High confidence prediction based on sufficient data."
+
+### Alert Simplification
+Single primary trigger per alert type:
+- **Anomaly Alerts**: Triggered by anomaly_score only (other metrics are context)
+- **Health Alerts**: Triggered by health_score only
+- **Prediction Alerts**: Triggered by prediction_confidence only
+- **Data Alerts**: Triggered by data_sufficiency only
+
+No multi-dimensional alert triggers. Each alert has one clear condition.
+
 ## Color System
 
 The application uses a professional analytics color scheme with dynamic CSS classes:
@@ -398,6 +456,42 @@ Dynamic alert classes:
 - `.alert-success`, `.badge-success`
 
 ## Integration Examples
+
+### Embeddable Widgets
+
+#### HTML Embed
+```html
+<iframe 
+  src="https://your-app.com/embed/anomaly?sellerId=uuid&apiKey=key" 
+  width="400" 
+  height="300" 
+  frameborder="0"
+  style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+</iframe>
+```
+
+#### React Component
+```typescript
+import { useEffect, useState } from 'react';
+
+function AnalyticsWidget() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    fetch('https://your-app.com/api/analytics/anomaly?sellerId=uuid', {
+      headers: { 'x-api-key': 'your_key' }
+    })
+      .then(res => res.json())
+      .then(setData);
+  }, []);
+
+  return (
+    <div>
+      {data && <p>Anomaly Score: {data.anomalyScore}</p>}
+    </div>
+  );
+}
+```
 
 ### JavaScript/TypeScript
 ```typescript

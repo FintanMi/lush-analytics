@@ -13,6 +13,11 @@ import type {
   DecisionHook,
   WeeklyReport,
   RateLimitStatus,
+  TierConfig,
+  AlertConfig,
+  ExportRequest,
+  ExportHistory,
+  InsightSummary,
 } from '@/types/analytics';
 
 const CACHE_DURATION = 30000;
@@ -286,6 +291,106 @@ export const analyticsApi = {
       remaining: Math.max(0, limit - current),
       resetAt: Date.now() + 3600000,
       tier: (sellerData.pricing_tier as 'free' | 'basic' | 'pro' | 'enterprise') || 'free',
+    };
+  },
+
+  async getTierConfig(tier: string): Promise<TierConfig | null> {
+    const { data, error } = await supabase
+      .from('tier_config')
+      .select('*')
+      .eq('tier', tier)
+      .single();
+
+    if (error) return null;
+    return data as unknown as TierConfig;
+  },
+
+  async getAlertConfigs(): Promise<AlertConfig[]> {
+    const { data, error } = await supabase
+      .from('alert_config')
+      .select('*')
+      .eq('enabled', true);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as unknown as AlertConfig[] : [];
+  },
+
+  async getThresholds(): Promise<Record<string, number>> {
+    const { data, error } = await supabase
+      .from('threshold_config')
+      .select('key, value');
+
+    if (error) throw error;
+    
+    const thresholds: Record<string, number> = {};
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const typedItem = item as { key: string; value: number };
+        thresholds[typedItem.key] = Number(typedItem.value);
+      }
+    }
+    return thresholds;
+  },
+
+  async createExport(request: ExportRequest): Promise<ExportHistory> {
+    const { data, error } = await supabase
+      .from('export_history')
+      .insert([{
+        seller_id: request.sellerId,
+        export_type: request.exportType,
+        format: request.format,
+        status: 'pending',
+        metadata: request.metadata || {}
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ExportHistory;
+  },
+
+  async getExportHistory(sellerId: string, limit = 10): Promise<ExportHistory[]> {
+    const { data, error } = await supabase
+      .from('export_history')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as ExportHistory[] : [];
+  },
+
+  async generateInsightSummary(sellerId: string, period = '24h'): Promise<InsightSummary> {
+    const [insightsData, healthScore, anomaly] = await Promise.all([
+      analyticsApi.getInsights(sellerId, 'SALE'),
+      analyticsApi.getInsights(sellerId, 'SALE').then(d => d.healthScore),
+      analyticsApi.getAnomalyScore(sellerId, 'SALE'),
+    ]);
+
+    const criticalInsights = insightsData.insights.filter(i => i.severity === 'critical' || i.severity === 'high');
+    const topIssue = criticalInsights.length > 0 ? criticalInsights[0].title : 'No critical issues detected';
+    
+    let recommendation = 'Continue monitoring metrics.';
+    if (healthScore.overall < 0.4) {
+      recommendation = 'Immediate action required. Review anomalies and adjust strategy.';
+    } else if (healthScore.overall < 0.6) {
+      recommendation = 'Monitor closely. Consider investigating recent changes.';
+    } else if (healthScore.overall < 0.8) {
+      recommendation = 'Performance is good. Minor optimizations possible.';
+    } else {
+      recommendation = 'Excellent performance. Maintain current strategy.';
+    }
+
+    return {
+      sellerId,
+      period,
+      overallHealth: healthScore.overall,
+      anomalyCount: insightsData.insights.filter(i => i.type === 'anomaly').length,
+      topIssue,
+      recommendation,
+      confidence: anomaly.metrics.dataPoints > 300 ? 0.9 : anomaly.metrics.dataPoints > 100 ? 0.7 : 0.5,
+      dataSufficiency: anomaly.metrics.dataSufficiency,
     };
   },
 

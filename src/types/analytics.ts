@@ -164,3 +164,61 @@ export interface ApiUsageStats {
   avgResponseTime: number;
   lastCallAt: number;
 }
+
+export interface TierConfig {
+  tier: 'free' | 'basic' | 'pro' | 'enterprise';
+  apiCallsLimit: number;
+  windowSize: number;
+  cacheTtlSeconds: number;
+  maxBatchSize: number;
+  predictionSteps: number;
+  features: Record<string, boolean>;
+}
+
+export interface AlertConfig {
+  id: string;
+  name: string;
+  triggerType: 'anomaly_score' | 'health_score' | 'prediction_confidence' | 'data_sufficiency';
+  thresholdMin: number | null;
+  thresholdMax: number | null;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  messageTemplate: string;
+  enabled: boolean;
+}
+
+export interface ThresholdConfig {
+  key: string;
+  value: number;
+  description: string;
+  category: string;
+}
+
+export interface ExportRequest {
+  sellerId: string;
+  exportType: 'pdf' | 'csv' | 'json' | 'email';
+  format: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExportHistory {
+  id: string;
+  seller_id: string;
+  export_type: 'pdf' | 'csv' | 'json' | 'email';
+  format: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  file_url: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface InsightSummary {
+  sellerId: string;
+  period: string;
+  overallHealth: number;
+  anomalyCount: number;
+  topIssue: string;
+  recommendation: string;
+  confidence: number;
+  dataSufficiency: 'insufficient' | 'minimal' | 'adequate' | 'optimal';
+}

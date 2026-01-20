@@ -10,6 +10,7 @@ import { PredictiveAlerts } from '@/components/analytics/PredictiveAlerts';
 import { BehaviorFingerprintCard } from '@/components/analytics/BehaviorFingerprintCard';
 import { DataSufficiencyBadge } from '@/components/analytics/DataSufficiencyBadge';
 import { RateLimitIndicator } from '@/components/analytics/RateLimitIndicator';
+import { InsightSummaryCard } from '@/components/analytics/InsightSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -233,6 +234,24 @@ export default function Dashboard() {
 
       {rateLimit && (
         <RateLimitIndicator rateLimit={rateLimit} />
+      )}
+
+      {selectedSeller && (
+        <InsightSummaryCard 
+          summary={{
+            sellerId: selectedSeller,
+            period: '24h',
+            overallHealth: healthScore?.overall || 0,
+            anomalyCount: insights.filter(i => i.type === 'anomaly').length,
+            topIssue: insights.find(i => i.severity === 'critical' || i.severity === 'high')?.title || 'No critical issues',
+            recommendation: healthScore && healthScore.overall < 0.4 ? 'Immediate action required' : 'Continue monitoring',
+            confidence: anomalyData?.metrics.dataPoints && anomalyData.metrics.dataPoints > 300 ? 0.9 : 0.7,
+            dataSufficiency: anomalyData?.metrics.dataSufficiency || 'insufficient',
+          }}
+          onExport={(type) => {
+            console.log('Export requested:', type);
+          }}
+        />
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">
