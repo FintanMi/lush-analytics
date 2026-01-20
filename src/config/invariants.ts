@@ -116,43 +116,11 @@ export const validateInvariants = {
 
 /**
  * Embed widget guardrails
+ * 
+ * IMPORTANT: Rate limits and branding rules are stored in tier_config table.
+ * These constants are for type reference only.
  */
 export const EMBED_GUARDRAILS = {
-  /**
-   * Rate limits per embed key (requests per hour)
-   */
-  RATE_LIMITS: {
-    free: 100,
-    basic: 1000,
-    pro: 10000,
-    enterprise: -1, // unlimited
-  },
-
-  /**
-   * Branding requirements
-   */
-  BRANDING: {
-    free: {
-      watermark: true,
-      watermarkText: 'Powered by Analytics API',
-      customBranding: false,
-    },
-    basic: {
-      watermark: true,
-      watermarkText: 'Powered by Analytics API',
-      customBranding: false,
-    },
-    pro: {
-      watermark: false,
-      watermarkText: '',
-      customBranding: true,
-    },
-    enterprise: {
-      watermark: false,
-      watermarkText: '',
-      customBranding: true,
-    },
-  },
 
   /**
    * Default scopes for embed keys
@@ -238,35 +206,12 @@ export const INSIGHT_LIFECYCLE = {
 };
 
 /**
- * Data retention by tier (in days)
+ * Data retention policies
+ * 
+ * IMPORTANT: Retention periods are stored in retention_policies table.
+ * This constant is for type reference only.
  */
-export const RETENTION_POLICIES = {
-  free: {
-    events: 7,
-    metrics_cache: 1,
-    insights: 7,
-    exports: 1,
-    api_usage: 7,
-  },
-  basic: {
-    events: 30,
-    metrics_cache: 7,
-    insights: 30,
-    exports: 7,
-    api_usage: 30,
-  },
-  pro: {
-    events: 90,
-    metrics_cache: 30,
-    insights: 90,
-    exports: 30,
-    api_usage: 90,
-  },
-  enterprise: {
-    events: 365,
-    metrics_cache: 90,
-    insights: 365,
-    exports: 90,
-    api_usage: 365,
-  },
+export const RETENTION_POLICY_TYPES = {
+  DATA_TYPES: ['events', 'metrics_cache', 'insights', 'exports', 'api_usage'] as const,
+  DECAY_STRATEGIES: ['hard_delete', 'soft_delete', 'archive'] as const,
 } as const;

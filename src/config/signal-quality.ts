@@ -4,6 +4,10 @@
  * Edge cases are NOT errors - they are low-confidence signal regimes.
  * This module treats degenerate patterns as signals about data quality,
  * not bugs to be fixed.
+ * 
+ * IMPORTANT: All thresholds MUST be fetched from database tables:
+ * - signal_quality_rules: Pattern detection thresholds
+ * - threshold_config: Quality score thresholds
  */
 
 export const SIGNAL_QUALITY = {
@@ -16,20 +20,13 @@ export const SIGNAL_QUALITY = {
     LOW: 'low',             // Significant issues, reduced confidence
     DEGENERATE: 'degenerate', // Unusable for reliable analytics
   } as const,
-
-  /**
-   * Quality score thresholds
-   */
-  THRESHOLDS: {
-    HIGH_QUALITY: 0.8,
-    MEDIUM_QUALITY: 0.5,
-    LOW_QUALITY: 0.3,
-    DEGENERATE: 0.0,
-  } as const,
 };
 
 /**
  * Degenerate behavior patterns (signals, not errors)
+ * 
+ * IMPORTANT: Detection thresholds are stored in signal_quality_rules table.
+ * These constants are for type definitions only.
  */
 export const DEGENERATE_PATTERNS = {
   /**
@@ -41,37 +38,6 @@ export const DEGENERATE_PATTERNS = {
     IMPOSSIBLE_REGULARITY: 'impossible_regularity', // Too regular for organic behavior
     BOT_SIGNATURE: 'bot_signature',           // Automated behavior patterns
     SYNTHETIC_DATA: 'synthetic_data',         // Artificially generated data
-  } as const,
-
-  /**
-   * Detection rules
-   */
-  RULES: {
-    constant_zero: {
-      threshold: 0.95, // >95% zero values
-      impact: 'severe',
-      message: 'Data consists primarily of zero values. Analytics unreliable.',
-    },
-    perfect_periodicity: {
-      threshold: 0.99, // >99% periodic
-      impact: 'severe',
-      message: 'Perfect repeating pattern detected. Likely automated/bot traffic.',
-    },
-    impossible_regularity: {
-      threshold: 0.98, // Variance too low
-      impact: 'moderate',
-      message: 'Unnaturally regular pattern. Confidence reduced.',
-    },
-    bot_signature: {
-      threshold: 0.85, // Timestamp clustering
-      impact: 'moderate',
-      message: 'Automated behavior detected. Results may not reflect organic activity.',
-    },
-    synthetic_data: {
-      threshold: 0.90, // Single value dominance
-      impact: 'moderate',
-      message: 'Data distribution suggests synthetic generation.',
-    },
   } as const,
 };
 
@@ -184,24 +150,29 @@ export const ENCRYPTION_POLICIES = {
 
 /**
  * Signal quality assessment functions
+ * All thresholds MUST be fetched from signal_quality_rules table
  */
 export const assessSignalQuality = {
   /**
    * Detect constant zero values
+   * @param values - Array of numeric values
+   * @param threshold - Detection threshold from signal_quality_rules
    */
-  detectConstantZero(values: number[]): { detected: boolean; ratio: number } {
+  detectConstantZero(values: number[], threshold: number): { detected: boolean; ratio: number } {
     const zeroCount = values.filter(v => v === 0).length;
     const ratio = zeroCount / values.length;
     return {
-      detected: ratio > DEGENERATE_PATTERNS.RULES.constant_zero.threshold,
+      detected: ratio > threshold,
       ratio,
     };
   },
 
   /**
    * Detect perfect periodicity
+   * @param values - Array of numeric values
+   * @param threshold - Detection threshold from signal_quality_rules
    */
-  detectPerfectPeriodicity(values: number[]): { detected: boolean; confidence: number } {
+  detectPerfectPeriodicity(values: number[], threshold: number): { detected: boolean; confidence: number } {
     if (values.length < 4) return { detected: false, confidence: 0 };
 
     // Check for repeating patterns
@@ -210,31 +181,35 @@ export const assessSignalQuality = {
     const confidence = 1 - (uniqueDiffs.size / diffs.length);
 
     return {
-      detected: confidence > DEGENERATE_PATTERNS.RULES.perfect_periodicity.threshold,
+      detected: confidence > threshold,
       confidence,
     };
   },
 
   /**
    * Detect impossible regularity
+   * @param values - Array of numeric values
+   * @param threshold - Detection threshold from signal_quality_rules
    */
-  detectImpossibleRegularity(values: number[]): { detected: boolean; variance: number } {
+  detectImpossibleRegularity(values: number[], threshold: number): { detected: boolean; variance: number } {
     if (values.length < 2) return { detected: false, variance: 0 };
 
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
-    const coefficientOfVariation = Math.sqrt(variance) / mean;
+    const coefficientOfVariation = Math.sqrt(variance) / (mean || 1);
 
     return {
-      detected: coefficientOfVariation < (1 - DEGENERATE_PATTERNS.RULES.impossible_regularity.threshold),
+      detected: coefficientOfVariation < (1 - threshold),
       variance: coefficientOfVariation,
     };
   },
 
   /**
    * Detect bot signature (timestamp clustering)
+   * @param timestamps - Array of timestamps
+   * @param threshold - Detection threshold from signal_quality_rules
    */
-  detectBotSignature(timestamps: number[]): { detected: boolean; clusterRatio: number } {
+  detectBotSignature(timestamps: number[], threshold: number): { detected: boolean; clusterRatio: number } {
     if (timestamps.length < 2) return { detected: false, clusterRatio: 0 };
 
     const sorted = [...timestamps].sort((a, b) => a - b);
@@ -243,37 +218,56 @@ export const assessSignalQuality = {
     const clusterRatio = clustered / diffs.length;
 
     return {
-      detected: clusterRatio > DEGENERATE_PATTERNS.RULES.bot_signature.threshold,
+      detected: clusterRatio > threshold,
       clusterRatio,
     };
   },
 
   /**
-   * Calculate overall signal quality score
+   * Calculate overall signal quality score based on detected patterns
+   * @param patterns - Detected pattern flags
+   * @param rules - Signal quality rules from database with confidence_impact
    */
-  calculateQualityScore(patterns: {
-    constantZero: boolean;
-    perfectPeriodicity: boolean;
-    impossibleRegularity: boolean;
-    botSignature: boolean;
-  }): number {
+  calculateQualityScore(
+    patterns: Record<string, boolean>,
+    rules: { pattern_type: string; confidence_impact: string }[]
+  ): number {
     let score = 1.0;
 
-    if (patterns.constantZero) score -= 0.5;
-    if (patterns.perfectPeriodicity) score -= 0.3;
-    if (patterns.impossibleRegularity) score -= 0.2;
-    if (patterns.botSignature) score -= 0.2;
+    const impactWeights: Record<string, number> = {
+      severe: 0.5,
+      moderate: 0.3,
+      minor: 0.2,
+      none: 0,
+    };
+
+    Object.entries(patterns).forEach(([patternType, detected]) => {
+      if (detected) {
+        const rule = rules.find(r => r.pattern_type === patternType);
+        const impact = rule?.confidence_impact || 'moderate';
+        score -= impactWeights[impact] || 0.3;
+      }
+    });
 
     return Math.max(0, score);
   },
 
   /**
-   * Determine confidence regime
+   * Determine confidence regime based on quality score
+   * @param qualityScore - Calculated quality score (0-1)
+   * @param thresholds - Thresholds from threshold_config table
    */
-  getConfidenceRegime(qualityScore: number): 'high' | 'medium' | 'low' | 'degenerate' {
-    if (qualityScore >= SIGNAL_QUALITY.THRESHOLDS.HIGH_QUALITY) return 'high';
-    if (qualityScore >= SIGNAL_QUALITY.THRESHOLDS.MEDIUM_QUALITY) return 'medium';
-    if (qualityScore >= SIGNAL_QUALITY.THRESHOLDS.LOW_QUALITY) return 'low';
+  getConfidenceRegime(
+    qualityScore: number,
+    thresholds: { name: string; value: number }[]
+  ): 'high' | 'medium' | 'low' | 'degenerate' {
+    const highQuality = thresholds.find(t => t.name === 'quality_high')?.value ?? 0.8;
+    const mediumQuality = thresholds.find(t => t.name === 'quality_medium')?.value ?? 0.5;
+    const lowQuality = thresholds.find(t => t.name === 'quality_low')?.value ?? 0.3;
+
+    if (qualityScore >= highQuality) return 'high';
+    if (qualityScore >= mediumQuality) return 'medium';
+    if (qualityScore >= lowQuality) return 'low';
     return 'degenerate';
   },
 
