@@ -8,6 +8,8 @@ import { InsightsPanel } from '@/components/analytics/InsightsPanel';
 import { HealthScoreCard } from '@/components/analytics/HealthScoreCard';
 import { PredictiveAlerts } from '@/components/analytics/PredictiveAlerts';
 import { BehaviorFingerprintCard } from '@/components/analytics/BehaviorFingerprintCard';
+import { DataSufficiencyBadge } from '@/components/analytics/DataSufficiencyBadge';
+import { RateLimitIndicator } from '@/components/analytics/RateLimitIndicator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +31,7 @@ import type {
   SellerHealthScore,
   BehaviorFingerprint,
   PredictiveAlert,
+  RateLimitStatus,
 } from '@/types/analytics';
 
 export default function Dashboard() {
@@ -41,6 +44,7 @@ export default function Dashboard() {
   const [healthScore, setHealthScore] = useState<SellerHealthScore | null>(null);
   const [fingerprint, setFingerprint] = useState<BehaviorFingerprint | null>(null);
   const [alerts, setAlerts] = useState<PredictiveAlert[]>([]);
+  const [rateLimit, setRateLimit] = useState<RateLimitStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [liveUpdates, setLiveUpdates] = useState(true);
@@ -87,11 +91,12 @@ export default function Dashboard() {
 
     setRefreshing(true);
     try {
-      const [eventsData, anomaly, predictions, insightsData] = await Promise.all([
+      const [eventsData, anomaly, predictions, insightsData, rateLimitData] = await Promise.all([
         analyticsApi.getRecentEvents(selectedSeller, 24),
         analyticsApi.getAnomalyScore(selectedSeller, 'SALE'),
         analyticsApi.getPredictions(selectedSeller, 'SALE', 10),
         analyticsApi.getInsights(selectedSeller, 'SALE'),
+        analyticsApi.getRateLimitStatus(selectedSeller),
       ]);
 
       setEvents(eventsData);
@@ -101,6 +106,7 @@ export default function Dashboard() {
       setHealthScore(insightsData.healthScore);
       setFingerprint(insightsData.fingerprint);
       setAlerts(insightsData.alerts || []);
+      setRateLimit(rateLimitData);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -185,6 +191,15 @@ export default function Dashboard() {
 
       {alerts.length > 0 && <PredictiveAlerts alerts={alerts} />}
 
+      {anomalyData && anomalyData.metrics && (
+        <DataSufficiencyBadge 
+          level={anomalyData.metrics.dataSufficiency}
+          dataPoints={anomalyData.metrics.dataPoints}
+          timeWindowStart={anomalyData.metrics.timeWindowStart}
+          timeWindowEnd={anomalyData.metrics.timeWindowEnd}
+        />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Sales"
@@ -215,6 +230,10 @@ export default function Dashboard() {
           status="normal"
         />
       </div>
+
+      {rateLimit && (
+        <RateLimitIndicator rateLimit={rateLimit} />
+      )}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <EventChart

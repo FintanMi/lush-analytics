@@ -3,6 +3,10 @@ export interface Seller {
   name: string;
   email: string | null;
   created_at: string;
+  api_key?: string;
+  pricing_tier?: 'free' | 'basic' | 'pro' | 'enterprise';
+  api_calls_count?: number;
+  api_calls_limit?: number;
 }
 
 export interface Event {
@@ -29,12 +33,17 @@ export interface AnomalyMetrics {
   periodicScore: number;
   hfd: number;
   dataPoints: number;
+  timeWindowStart: number;
+  timeWindowEnd: number;
+  dataSufficiency: 'insufficient' | 'minimal' | 'adequate' | 'optimal';
 }
 
 export interface AnomalyResponse {
   anomalyScore: number;
   metrics: AnomalyMetrics;
   message?: string;
+  deterministic: boolean;
+  computedAt: number;
 }
 
 export interface PredictionPoint {
@@ -56,8 +65,13 @@ export interface PredictionResponse {
   metadata: {
     dataPoints: number;
     predictionSteps: number;
+    timeWindowStart: number;
+    timeWindowEnd: number;
+    dataSufficiency: 'insufficient' | 'minimal' | 'adequate' | 'optimal';
   };
   message?: string;
+  deterministic: boolean;
+  computedAt: number;
 }
 
 export interface MetricsCache {
@@ -110,4 +124,43 @@ export interface PredictiveAlert {
   message: string;
   predictedImpact: number;
   timeToImpact: number;
+}
+
+export interface DecisionHook {
+  id: string;
+  seller_id: string;
+  trigger_type: 'anomaly_threshold' | 'health_score' | 'prediction_alert';
+  threshold_value: number;
+  action: 'email' | 'webhook' | 'sms' | 'slack';
+  action_config: Record<string, unknown>;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface WeeklyReport {
+  id: string;
+  seller_id: string;
+  week_start: string;
+  week_end: string;
+  total_events: number;
+  anomaly_count: number;
+  avg_health_score: number;
+  top_insights: AutoInsight[];
+  generated_at: string;
+}
+
+export interface RateLimitStatus {
+  current: number;
+  limit: number;
+  remaining: number;
+  resetAt: number;
+  tier: 'free' | 'basic' | 'pro' | 'enterprise';
+}
+
+export interface ApiUsageStats {
+  totalCalls: number;
+  successfulCalls: number;
+  failedCalls: number;
+  avgResponseTime: number;
+  lastCallAt: number;
 }

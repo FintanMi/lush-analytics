@@ -18,6 +18,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **FFT Analysis**: Detects periodic spikes and recurring patterns
 - **HFD (Higuchi Fractal Dimension)**: Measures time series complexity to identify bot activity
 - **Bayesian Scoring**: Combines multiple signals for accurate anomaly detection (0-1 scale)
+- **Deterministic**: Same inputs always produce same outputs (no randomness)
 
 ### 🤖 Auto-Insights Engine
 Lightweight rule-based and probability-based insights generation:
@@ -45,6 +46,21 @@ Lightweight rule-based and probability-based insights generation:
 - Predictive alerts panel
 - Behavior fingerprint analysis
 - Live update toggle with real-time Supabase subscriptions
+- **Data Sufficiency Indicators**: Clear badges showing data quality (insufficient/minimal/adequate/optimal)
+- **Time Window Display**: Explicit time ranges for all analyses
+- **Rate Limit Visibility**: Real-time API usage tracking with tier-based limits
+
+### 🔧 Advanced Features
+- **Decision Hooks**: Configure automated actions based on thresholds
+  - Anomaly threshold triggers
+  - Health score alerts
+  - Prediction-based notifications
+  - Actions: Email, Webhook, SMS, Slack
+- **Weekly Reports**: Automated seller health summaries
+- **Alert-Driven Pricing Tiers**: Free, Basic, Pro, Enterprise with different rate limits
+- **Public API Endpoints**: Integrate anomaly detection and predictions into your apps
+- **API Key Management**: Secure access with per-seller API keys
+- **Usage Tracking**: Monitor API calls, response times, and success rates
 
 ## Getting Started
 
@@ -64,7 +80,8 @@ Go to "Event Ingestion" page to submit events:
 Use the "Sellers" page to:
 - View all registered sellers
 - Add new sellers
-- View seller details and IDs
+- View seller details and API keys
+- Check pricing tiers and rate limits
 
 ### API Endpoints
 
@@ -107,9 +124,11 @@ Response:
 Limits: Maximum 1000 events per batch
 ```
 
-#### Anomaly Detection
+#### Anomaly Detection (Public API)
 ```
 GET /functions/v1/anomaly-detection?sellerId={uuid}&type={SALE|CLICK|VIEW}
+Headers:
+  x-api-key: your_api_key_here
 
 Response:
 {
@@ -117,14 +136,33 @@ Response:
   "metrics": {
     "periodicScore": 0.72,
     "hfd": 1.45,
-    "dataPoints": 512
+    "dataPoints": 512,
+    "timeWindowStart": 1234567890000,
+    "timeWindowEnd": 1234567900000,
+    "dataSufficiency": "optimal"
+  },
+  "deterministic": true,
+  "computedAt": 1234567890000
+}
+
+Rate Limit Response (429):
+{
+  "error": "Rate limit exceeded",
+  "rateLimit": {
+    "current": 1000,
+    "limit": 1000,
+    "remaining": 0,
+    "resetAt": 1234567890000,
+    "tier": "free"
   }
 }
 ```
 
-#### Predictions
+#### Predictions (Public API)
 ```
 GET /functions/v1/predictions?sellerId={uuid}&type={SALE|CLICK|VIEW}&steps=10
+Headers:
+  x-api-key: your_api_key_here
 
 Response:
 {
@@ -140,8 +178,13 @@ Response:
   "historical": [...],
   "metadata": {
     "dataPoints": 256,
-    "predictionSteps": 10
-  }
+    "predictionSteps": 10,
+    "timeWindowStart": 1234567890000,
+    "timeWindowEnd": 1234567900000,
+    "dataSufficiency": "adequate"
+  },
+  "deterministic": true,
+  "computedAt": 1234567890000
 }
 ```
 
@@ -200,14 +243,17 @@ Response:
 
 ### Backend
 - **Database**: Supabase PostgreSQL
-  - `sellers`: Seller accounts
+  - `sellers`: Seller accounts with API keys and pricing tiers
   - `events`: Time series event data (512 point sliding window)
   - `metrics_cache`: Probabilistic cache with adaptive TTL
+  - `decision_hooks`: Automated action triggers
+  - `weekly_reports`: Historical health summaries
+  - `api_usage`: API call tracking and analytics
 
 - **Edge Functions**: Serverless compute for DSP algorithms
   - `event-ingestion`: Single event processing and storage
   - `batch-ingestion`: High-throughput batch processing
-  - `anomaly-detection`: DSP pipeline execution
+  - `anomaly-detection`: DSP pipeline execution with rate limiting
   - `predictions`: Time series forecasting with confidence bands
   - `insights-engine`: Auto-insights generation
 
@@ -230,6 +276,14 @@ Response:
 - Toggle-able live mode in dashboard
 - Automatic data refresh on new events
 - Optimistic UI updates
+
+### Rate Limiting & Pricing Tiers
+- **Free**: 1,000 calls/hour
+- **Basic**: 10,000 calls/hour
+- **Pro**: 100,000 calls/hour
+- **Enterprise**: Unlimited
+
+Rate limits reset hourly. Exceeded limits return 429 status with reset time.
 
 ## Technical Details
 
@@ -259,6 +313,14 @@ Bayesian combination:
 ```
 score = 0.4 × deviation + 0.3 × periodic + 0.3 × hfd
 ```
+
+**Deterministic Guarantee**: All algorithms use fixed seeds and deterministic operations. Same input data always produces identical output scores.
+
+### Data Sufficiency Levels
+- **Insufficient** (<50 events): Unreliable analysis, need more data
+- **Minimal** (50-99 events): Basic analysis possible, accuracy limited
+- **Adequate** (100-299 events): Good analysis quality
+- **Optimal** (300+ events): Excellent analysis with high confidence
 
 ### Auto-Insights Engine
 
@@ -292,12 +354,25 @@ Classification:
 - **Phase Misalignment**: Periodic score 0.7-0.9
 - **Confidence Decay**: Prediction confidence < 0.6
 
+### Decision Hooks
+Automated actions triggered by conditions:
+- **Anomaly Threshold**: Alert when score exceeds threshold
+- **Health Score**: Notify on health degradation
+- **Prediction Alert**: Act on forecasted issues
+
+Actions:
+- **Email**: Send notification email
+- **Webhook**: POST to external URL
+- **SMS**: Send text message
+- **Slack**: Post to Slack channel
+
 ### Performance Characteristics
 - **Sliding Window**: 512 data points per seller per metric
 - **Query Latency**: <100ms (cached), <500ms (computed)
 - **Throughput**: 1000+ events/second (batch mode)
 - **Storage**: Automatic cleanup of old events
 - **Cache Hit Rate**: ~80% with 30s TTL
+- **Deterministic**: 100% reproducible results
 
 ### Chart Improvements
 - **Timestamp Handling**: Numeric timestamps internally, formatted only in tooltips and ticks
@@ -305,6 +380,7 @@ Classification:
 - **Confidence Bands**: ±σ bands around predictions showing uncertainty growth
 - **Visual Separation**: Reference line marking forecast start
 - **No Overlap**: Separate actual and predicted data series
+- **Time Window Display**: Clear indication of analysis time range
 
 ## Color System
 
@@ -320,6 +396,48 @@ Dynamic alert classes:
 - `.alert-warning`, `.badge-warning`
 - `.alert-info`, `.badge-info`
 - `.alert-success`, `.badge-success`
+
+## Integration Examples
+
+### JavaScript/TypeScript
+```typescript
+const apiKey = 'your_api_key_here';
+const sellerId = 'seller_uuid';
+
+// Get anomaly score
+const response = await fetch(
+  `https://your-project.supabase.co/functions/v1/anomaly-detection?sellerId=${sellerId}&type=SALE`,
+  { headers: { 'x-api-key': apiKey } }
+);
+const data = await response.json();
+console.log('Anomaly Score:', data.anomalyScore);
+console.log('Data Quality:', data.metrics.dataSufficiency);
+console.log('Time Window:', new Date(data.metrics.timeWindowStart), '-', new Date(data.metrics.timeWindowEnd));
+```
+
+### Python
+```python
+import requests
+
+api_key = 'your_api_key_here'
+seller_id = 'seller_uuid'
+
+response = requests.get(
+    f'https://your-project.supabase.co/functions/v1/anomaly-detection',
+    params={'sellerId': seller_id, 'type': 'SALE'},
+    headers={'x-api-key': api_key}
+)
+data = response.json()
+print(f"Anomaly Score: {data['anomalyScore']}")
+print(f"Data Quality: {data['metrics']['dataSufficiency']}")
+```
+
+### cURL
+```bash
+curl -X GET \
+  'https://your-project.supabase.co/functions/v1/anomaly-detection?sellerId=uuid&type=SALE' \
+  -H 'x-api-key: your_api_key_here'
+```
 
 ## License
 

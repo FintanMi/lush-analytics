@@ -10,6 +10,9 @@ import type {
   SellerHealthScore,
   BehaviorFingerprint,
   PredictiveAlert,
+  DecisionHook,
+  WeeklyReport,
+  RateLimitStatus,
 } from '@/types/analytics';
 
 const CACHE_DURATION = 30000;
@@ -104,15 +107,19 @@ export const analyticsApi = {
 
   async getAnomalyScore(
     sellerId: string,
-    type: 'SALE' | 'CLICK' | 'VIEW' = 'SALE'
+    type: 'SALE' | 'CLICK' | 'VIEW' = 'SALE',
+    apiKey?: string
   ): Promise<AnomalyResponse> {
     const cacheKey = `anomaly-${sellerId}-${type}`;
     const cached = getCached<AnomalyResponse>(cacheKey);
     if (cached) return cached;
 
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['x-api-key'] = apiKey;
+
     const { data, error } = await supabase.functions.invoke(
       `anomaly-detection?sellerId=${sellerId}&type=${type}`,
-      { method: 'GET' }
+      { method: 'GET', headers }
     );
 
     if (error) {
@@ -131,15 +138,19 @@ export const analyticsApi = {
   async getPredictions(
     sellerId: string,
     type: 'SALE' | 'CLICK' | 'VIEW' = 'SALE',
-    steps = 10
+    steps = 10,
+    apiKey?: string
   ): Promise<PredictionResponse> {
     const cacheKey = `predictions-${sellerId}-${type}-${steps}`;
     const cached = getCached<PredictionResponse>(cacheKey);
     if (cached) return cached;
 
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['x-api-key'] = apiKey;
+
     const { data, error } = await supabase.functions.invoke(
       `predictions?sellerId=${sellerId}&type=${type}&steps=${steps}`,
-      { method: 'GET' }
+      { method: 'GET', headers }
     );
 
     if (error) {
@@ -199,6 +210,83 @@ export const analyticsApi = {
 
     if (error) throw error;
     return Array.isArray(data) ? data : [];
+  },
+
+  async getDecisionHooks(sellerId: string): Promise<DecisionHook[]> {
+    const { data, error } = await supabase
+      .from('decision_hooks')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createDecisionHook(hook: Omit<DecisionHook, 'id' | 'created_at'>): Promise<DecisionHook> {
+    const { data, error } = await supabase
+      .from('decision_hooks')
+      .insert([hook as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as DecisionHook;
+  },
+
+  async updateDecisionHook(id: string, updates: Partial<DecisionHook>): Promise<DecisionHook> {
+    const { data, error } = await supabase
+      .from('decision_hooks')
+      .update(updates as never)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as DecisionHook;
+  },
+
+  async deleteDecisionHook(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('decision_hooks')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  async getWeeklyReports(sellerId: string, limit = 10): Promise<WeeklyReport[]> {
+    const { data, error } = await supabase
+      .from('weekly_reports')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('week_start', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getRateLimitStatus(sellerId: string): Promise<RateLimitStatus> {
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('api_calls_count, api_calls_limit, pricing_tier')
+      .eq('id', sellerId)
+      .single();
+
+    if (error) throw error;
+
+    const sellerData = data as unknown as { api_calls_count: number | null; api_calls_limit: number | null; pricing_tier: string | null };
+    const current = sellerData.api_calls_count || 0;
+    const limit = sellerData.api_calls_limit || 1000;
+
+    return {
+      current,
+      limit,
+      remaining: Math.max(0, limit - current),
+      resetAt: Date.now() + 3600000,
+      tier: (sellerData.pricing_tier as 'free' | 'basic' | 'pro' | 'enterprise') || 'free',
+    };
   },
 
   subscribeToEvents(
