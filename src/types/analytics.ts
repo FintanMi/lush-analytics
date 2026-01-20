@@ -295,3 +295,61 @@ export interface RetentionPolicy {
   last_cleanup_at: string | null;
   created_at: string;
 }
+
+export interface SignalQuality {
+  id: string;
+  seller_id: string;
+  metric_type: 'SALE' | 'CLICK' | 'VIEW';
+  quality_score: number;
+  confidence_regime: 'high' | 'medium' | 'low' | 'degenerate';
+  detected_patterns: Record<string, unknown>;
+  time_window_start: string;
+  time_window_end: string;
+  created_at: string;
+}
+
+export interface DegeneratePattern {
+  id: string;
+  seller_id: string;
+  pattern_type: 'constant_zero' | 'perfect_periodicity' | 'impossible_regularity' | 'bot_signature' | 'synthetic_data';
+  severity: 'low' | 'medium' | 'high';
+  confidence: number;
+  evidence: Record<string, unknown>;
+  detected_at: string;
+  resolved_at: string | null;
+  impact_on_analytics: string;
+}
+
+export interface SystemicAnomaly {
+  id: string;
+  anomaly_type: 'schema_change' | 'timestamp_drift' | 'ingestion_burst' | 'rate_limit_breach' | 'cache_thrashing' | 'computation_timeout';
+  severity: 'info' | 'warning' | 'critical';
+  affected_component: string;
+  details: Record<string, unknown>;
+  detected_at: string;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+}
+
+export interface EncryptionMetadata {
+  id: string;
+  table_name: string;
+  column_name: string | null;
+  encryption_type: 'at_rest' | 'in_transit' | 'key_material';
+  encryption_algorithm: string;
+  key_rotation_policy: string;
+  last_rotated_at: string | null;
+  next_rotation_at: string | null;
+  created_at: string;
+}
+
+export interface SignalQualityRule {
+  id: string;
+  rule_name: string;
+  pattern_type: string;
+  detection_threshold: number;
+  confidence_impact: 'none' | 'minor' | 'moderate' | 'severe';
+  description: string;
+  enabled: boolean;
+  created_at: string;
+}

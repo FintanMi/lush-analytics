@@ -6,7 +6,7 @@
 E-commerce Seller Analytics API
 
 ### 1.2 Application Description
-A lightweight, high-performance analytics API system designed for e-commerce sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture leveraging DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced with auto-insights engine, predictive alerts, seller health scoring, behavior fingerprinting capabilities, deterministic reproducibility, data sufficiency indicators, rate-limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, opinionated tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, and tier-based retention policies.
+A lightweight, high-performance analytics API system designed for e-commerce sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture leveraging DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced with auto-insights engine, predictive alerts, seller health scoring, behavior fingerprinting capabilities, deterministic reproducibility, data sufficiency indicators, rate-limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, opinionated tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality indicators, and comprehensive encryption strategy.
 
 ## 2. Core Features
 
@@ -15,7 +15,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Functionality**: Accept and process seller event data in real-time
 - **Payload Structure**:
   - sellerId: Seller identifier (opaque/surrogate key only)
-  - timestamp: Event timestamp (milliseconds)\n  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
+  - timestamp: Event timestamp (milliseconds)
+  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
 - **Processing Logic**: Add events to preallocated fixed-size ring buffer (contiguous array), with separate buffers per seller per metric. Use index modulo window size for circular access. No per-event reallocation or object churn.
 - **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n\n### 2.2 Batch Ingestion
 - **Endpoint**: POST /events/batch
@@ -24,18 +25,15 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Preallocated fixed-size contiguous array (window size defined in centralized config)
 - Index modulo window size for circular access\n- Zero reallocation per event\n- No per-event object churn
 - Support for real-time FIR, FFT, and HFD computations
-- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI
-
+- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI\n
 ### 2.4 DSP Analytics Pipeline
 - **FIR Smoothing**: Smooth time series data\n- **FFT Analysis**: Detect periodic spikes in sales/clicks, identify recurring bot patterns or hourly spikes
 - **HFD (Higuchi Fractal Dimension)**: Measure time series complexity/irregularity, high HFD values indicate possible bot activity or anomalous behavior
 - **Bayesian/Probabilistic Scoring**: Combine smoothed deviation, FFT spikes, and HFD to output anomaly score (0-1 range)
 - **Deterministic Anomaly Reproducibility**: Ensure same inputs always produce same outputs by fixing random seeds, deterministic sorting, and consistent computation order
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-
-### 2.5 Probabilistic Caching with Temporal Locality
-- Per-seller hot metric caching
-- **lastComputedAt** timestamp tracking for each cached metric
+\n### 2.5 Probabilistic Caching with Temporal Locality
+- Per-seller hot metric caching\n- **lastComputedAt** timestamp tracking for each cached metric
 - Probabilistic refresh only when queried (not on every event)
 - Adaptive TTL strategy defined in centralized config:\n  - Hot sellers: recompute based on config TTL
   - Cold sellers: recompute based on config TTL
@@ -46,13 +44,12 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Endpoint**: GET /metrics/:seller/anomalies
 - **Functionality**: Return seller anomaly score and attribution breakdown
 - **Response Format**:
-  - anomalyScore: Overall anomaly score (0-1)
-  - attribution: Root cause breakdown (FFT spike contribution, HFD complexity contribution, trend deviation)
-  - timeWindow: Clear time-window definition (startTimestamp, endTimestamp, windowSize)
+  - anomalyScore: Overall anomaly score (0-1)\n  - attribution: Root cause breakdown (FFT spike contribution, HFD complexity contribution, trend deviation)\n  - timeWindow: Clear time-window definition (startTimestamp, endTimestamp, windowSize)
   - dataSufficiency: Data sufficiency indicator (sufficient/insufficient, minimum data points required, current data points available)
   - reproducibilityHash: Hash value for deterministic verification
   - confidenceMessage: Confidence and sufficiency aware messaging explaining result reliability
   - configVersion: Configuration version used for this computation
+  - signalQuality: Signal quality assessment (degenerate patterns, edge case flags)
 
 ### 2.7 Prediction API
 - **Endpoint**: GET /metrics/:seller/predictions
@@ -60,11 +57,11 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Response Format**:\n  - predictions: Array of predicted values with timestamps
   - confidenceBands: ± confidence intervals around predictions
   - historicalCutoff: Timestamp marking where history ends and prediction begins
-  - timeWindow: Clear time-window definition
-  - dataSufficiency: Data sufficiency indicator
+  - timeWindow: Clear time-window definition\n  - dataSufficiency: Data sufficiency indicator
   - reproducibilityHash: Hash value for deterministic verification
   - confidenceMessage: Confidence and sufficiency aware messaging explaining prediction reliability
   - configVersion: Configuration version used for this computation
+  - signalQuality: Signal quality assessment
 
 ### 2.8 Auto-Insights Engine with Summaries and Lifecycle Management
 - **Functionality**: Generate lightweight insights based on rule and probability analysis
@@ -94,15 +91,14 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Alert Levels**: Defined by config tables (data-driven), not conditionals
 - **Alert Types**: Potential spike warning, declining trend alert, pattern shift notification
 - **System Invariant**: All alerts must reference data sufficiency status
-
-### 2.11 Seller Health Score (Composite Index)
+\n### 2.11 Seller Health Score (Composite Index)
 - **Endpoint**: GET /metrics/:seller/health
 - **Functionality**: Calculate comprehensive seller health score\n- **Scoring Factors**:
   - Volatility level
   - Anomaly frequency
   - Predictive risk assessment
   - Data consistency metrics
-- **Response Format**: { healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: \"...\", configVersion: \"...\" }
+- **Response Format**: { healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: \"...\", configVersion: \"...\", signalQuality: {...} }
 
 ### 2.12 Behavior Fingerprinting
 - **Functionality**: Identify and track seller behavior patterns
@@ -121,8 +117,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Medium-activity sellers: Moderate sampling
   - Low-activity sellers: Reduced sampling frequency
 - **Benefit**: Optimize system resources while maintaining accuracy
-
-### 2.14 Real-time Dashboard Integration
+\n### 2.14 Real-time Dashboard Integration
 - **Technology**: Supabase Realtime integration
 - **Functionality**: Live dashboard updates with AnomalyAlert component
 - **Features**:
@@ -134,7 +129,9 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - **Rate-Limit & Backpressure Visibility**: Show current rate-limit status, remaining quota, backpressure indicators, and queue depth
   - **Confidence & Sufficiency Aware Messaging**: Display contextual messages explaining result reliability based on data quality
   - **Insight Lifecycle Display**: Show insight states (Generated, Confirmed, Expired, Superseded) with visual indicators
-\n### 2.15 Event Log Management
+  - **Signal Quality Indicators**: Display edge case flags and degenerate pattern warnings
+
+### 2.15 Event Log Management
 - **Functionality**: Display and manage event logs on dashboard
 - **Features**:
   - Pagination support
@@ -146,8 +143,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Hook Points**:
   - Pre-anomaly detection hook: Execute custom logic before anomaly detection
   - Post-anomaly detection hook: Execute custom logic after anomaly detection\n  - Pre-prediction hook: Execute custom logic before prediction generation
-  - Post-prediction hook: Execute custom logic after prediction generation
-  - Alert trigger hook: Execute custom logic when alerts are triggered
+  - Post-prediction hook: Execute custom logic after prediction generation\n  - Alert trigger hook: Execute custom logic when alerts are triggered
 - **Use Cases**: Custom notification routing, third-party integration, business rule enforcement, audit logging
 
 ### 2.17 Weekly Seller Health Reports
@@ -160,6 +156,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Actionable recommendations
   - Insight summaries for quick understanding
   - Insight lifecycle status summary
+  - Signal quality assessment summary
 - **Delivery Methods**: Email, dashboard notification, API endpoint for retrieval
 - **Endpoint**: GET /reports/:seller/weekly
 - **Config Snapshot**: Each report includes snapshot of configuration version used for generation
@@ -181,13 +178,15 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Endpoint**: POST /sell/anomaly
 - **Functionality**: Dedicated endpoint for selling/exposing anomaly detection results to external systems
 - **Payload Structure**:
-  - sellerId: Seller identifier (opaque/surrogate key)\n  - timeRange: Time range for anomaly detection
-  - includeAttribution: Boolean flag to include root cause breakdown
+  - sellerId: Seller identifier (opaque/surrogate key)
+  - timeRange: Time range for anomaly detection\n  - includeAttribution: Boolean flag to include root cause breakdown
 - **Response Format**:
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time-window definition
   - dataSufficiency: Data sufficiency indicator\n  - reproducibilityHash: Hash value for verification
-  - confidenceMessage: Confidence and sufficiency aware messaging\n  - configVersion: Configuration version used\n
+  - confidenceMessage: Confidence and sufficiency aware messaging\n  - configVersion: Configuration version used
+  - signalQuality: Signal quality assessment
+
 ### 2.20 Dedicated Prediction Endpoint
 - **Endpoint**: POST /sell/prediction
 - **Functionality**: Dedicated endpoint for selling/exposing prediction results to external systems
@@ -196,13 +195,13 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - predictionHorizon: Number of time steps to predict
   - includeConfidenceBands: Boolean flag to include confidence intervals
 - **Response Format**:\n  - predictions: Array of predicted values with timestamps
-  - confidenceBands: ± confidence intervals
-  - historicalCutoff: Timestamp marking history/prediction boundary
+  - confidenceBands: ± confidence intervals\n  - historicalCutoff: Timestamp marking history/prediction boundary
   - timeWindow: Time-window definition
   - dataSufficiency: Data sufficiency indicator
   - reproducibilityHash: Hash value for verification
   - confidenceMessage: Confidence and sufficiency aware messaging
   - configVersion: Configuration version used
+  - signalQuality: Signal quality assessment
 
 ### 2.21 One-Click Export Functionality
 - **Functionality**: Export reports, insights, and analytics data with one click
@@ -220,8 +219,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Functionality**: Provide embeddable UI components for integration into external dashboards or applications
 - **Components**:\n  - Anomaly chart widget
   - Prediction chart widget
-  - Health score widget
-  - Alert notification widget
+  - Health score widget\n  - Alert notification widget
   - Event log widget
 - **Integration**: JavaScript SDK or iframe-based embedding
 - **Customization**: Support for theme customization and configuration options
@@ -229,9 +227,11 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Rate-limit per embed key (defined in centralized config per tier)
   - Light branding watermark for free/basic tiers
   - Read-only scopes by default (no write access unless explicitly granted)
-  - Embed key authentication required\n
+  - Embed key authentication required
+
 ### 2.23 Auditable Configuration Management
-- **Functionality**: Track and audit all configuration changes\n- **Features**:
+- **Functionality**: Track and audit all configuration changes
+- **Features**:
   - Version control for config tables
   - \"Effective since\" timestamps for each config change
   - Config snapshot storage with reports
@@ -243,26 +243,47 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - GET /config/audit: Retrieve config change audit log
   - POST /config/rollback/:id: Rollback to specific config version
 
+### 2.24 Edge Case Detection as Signal Quality\n- **Functionality**: Detect and flag edge cases as low-confidence signal regimes, not errors
+- **Degenerate Behavior Patterns**:
+  - Constant zero values: Flag as low-signal regime
+  - Perfect periodicity: Flag as potential bot activity signal
+  - Impossible regularity: Flag as anomalous signal pattern
+- **Treatment**: Edge cases are signals, not bugs. They indicate low-confidence regimes and should be surfaced as signal quality indicators\n- **Output**: Signal quality score and edge case flags included in all analytics responses
+- **Integration**: Signal quality indicators displayed in dashboard and included in API responses
+
+### 2.25 Systemic Anomaly Detection
+- **Functionality**: Detect and flag systemic issues separate from seller analytics
+- **Systemic Anomaly Types**:
+  - Sudden schema changes: Detect unexpected data structure changes
+  - Timestamp drift: Identify clock synchronization issues
+  - Ingestion bursts: Detect unusual data ingestion patterns
+- **Treatment**: Flag system health issues without polluting seller analytics
+- **Output**: Separate system health metrics and alerts
+- **Endpoint**: GET /system/health to query systemic anomaly status
+- **Dashboard Integration**: System health panel separate from seller analytics
+
 ## 3. Technical Architecture
 
 ### 3.1 Data Processing\n- Preallocated fixed-size contiguous ring buffer for real-time data storage
-- Index modulo window size for circular access
-- Zero reallocation per event, no per-event object churn\n- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
+- Index modulo window size for circular access\n- Zero reallocation per event, no per-event object churn\n- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
 - Batch processing support for high-throughput scenarios
 - Deterministic computation pipeline with fixed random seeds and consistent ordering
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-\n### 3.2 Caching Strategy with Temporal Locality
+
+### 3.2 Caching Strategy with Temporal Locality
 - Probabilistic caching mechanism\n- **lastComputedAt** timestamp tracking\n- Probabilistic refresh only when queried\n- Dynamic TTL adjustment (defined in centralized config)
 - Hot/cold data differentiation
 - Short-term caching layer for frequently accessed computations
 \n### 3.3 API Design
 - RESTful API architecture\n- Real-time event ingestion
 - Batch ingestion endpoint
-- On-demand metric query\n- Type-safe implementation (no any casts)
+- On-demand metric query
+- Type-safe implementation (no any casts)
 - Dedicated sell endpoints for anomaly and prediction results
 - Decision hook integration points
 - One-click export endpoints
 - Auditable configuration endpoints
+- System health endpoints
 
 ### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
@@ -278,6 +299,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Rate-Limit & Backpressure Dashboard**: Display current rate-limit status, remaining quota, backpressure metrics, queue depth visualization
 - **Confidence & Sufficiency Aware Messaging**: Contextual messages explaining result reliability\n- **Embeddable Component Support**: Integration of embeddable widgets\n- **Insight Lifecycle Visualization**: Display insight states with visual indicators and state transition history
 - **Config Version Display**: Show current config version in use
+- **Signal Quality Indicators**: Display edge case flags and degenerate pattern warnings
+- **System Health Panel**: Separate panel for systemic anomaly monitoring
 
 ### 3.5 Real-time Integration
 - Supabase Realtime for live data streaming
@@ -289,8 +312,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Report delivery system (email, notification, API)\n- Pricing tier API endpoints
 - One-click export functionality integration
 - Config snapshot storage with each report
-
-### 3.7 Deterministic Reproducibility System
+\n### 3.7 Deterministic Reproducibility System
 - Fixed random seed management
 - Deterministic sorting and computation order
 - Reproducibility hash generation for verification
@@ -300,20 +322,22 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Centralized Config Store**: Single source of truth for all system parameters
 - **Config Parameters**:
   - Window sizes (ring buffer size, analysis window size)
-  - Thresholds (anomaly score threshold, confidence cutoffs)
+  - Thresholds (anomaly score threshold, confidence cutoffs, signal quality thresholds)
   - TTLs (hot seller TTL, cold seller TTL, cache TTL)
   - Tier limits (alert frequency limits per tier, feature access per tier)
   - Confidence cutoffs (minimum confidence for predictions, minimum data sufficiency)
-  - Alert levels (defined by config tables, not conditionals)\n  - Sampling rates (high/medium/low activity sampling rates)
+  - Alert levels (defined by config tables, not conditionals)
+  - Sampling rates (high/medium/low activity sampling rates)
   - Embed rate-limits per tier
   - Retention policies per tier
+  - Edge case detection thresholds
 - **Dynamic Expressions**: Use dynamic expressions where applicable, avoid magic numbers
 - **Data-Driven Design**: Alert levels, tiers, thresholds all defined by config data, not hardcoded logic
 - **Versioning**: All config changes versioned with timestamps
 - **Audit Trail**: Complete audit log of config changes\n
 ### 3.9 Modular and Composable Architecture
 - **Composability Focus**: Design for composability, not reuse
-- **Modular Components**: Separate modules for DSP, caching, alerting, reporting, export, embedding, config management, insight lifecycle
+- **Modular Components**: Separate modules for DSP, caching, alerting, reporting, export, embedding, config management, insight lifecycle, edge case detection, systemic anomaly detection
 - **Concise Refactoring**: Eliminate redundancy, centralize common logic
 - **Zero Magic Numbers**: All constants defined in centralized config
 \n### 3.10 Data Minimization and Privacy Architecture
@@ -322,14 +346,14 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Event Payloads**: Stripped to behavioral signals only, no PII
 - **Aggregation-First**: All analytics operate on aggregated data
 - **Data Minimization Enforcement**: Automated checks to prevent PII leakage
-
-### 3.11 Retention Policy System
+\n### 3.11 Retention Policy System
 - **Tier-Based Retention**: Retention periods defined per pricing tier in centralized config
 - **Explicit Expiry Windows**: Clear expiry timestamps for all data
 - **Automatic Decay**: Automated data deletion based on retention policies
 - **Retention Tiers**:
   - Basic Tier: 30-day retention
-  - Premium Tier: 90-day retention\n  - Enterprise Tier: 365-day retention (customizable)
+  - Premium Tier: 90-day retention
+  - Enterprise Tier: 365-day retention (customizable)
 - **Policy Enforcement**: Retention as policy, not configuration - enforced at system level
 \n### 3.12 System Invariants (Codified)
 - **Determinism Guarantee**: Same inputs always produce same outputs
@@ -338,7 +362,28 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **All Alerts Reference Data Sufficiency**: Every alert must include data sufficiency status
 - **Data Minimization**: No PII in analytics paths, seller IDs always opaque, event payloads stripped to behavioral signals only
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-\n## 4. System Characteristics
+- **Edge Cases as Signals**: Edge cases treated as low-confidence signal regimes, not errors
+- **Systemic Anomalies Separate**: System health issues flagged separately from seller analytics
+\n### 3.13 Encryption Strategy
+- **At Rest Encryption**:
+  - Event storage: Encrypted\n  - Config tables: Encrypted
+  - Reports: Encrypted
+  - Usage logs: Encrypted
+- **In Transit Encryption**:
+  - API traffic: TLS everywhere, no exceptions
+  - Widget embeds: TLS required\n  - Webhooks: TLS required
+- **Secrets & Keys Management**:
+  - API keys: Encrypted, rotatable, scoped, revocable
+  - Webhook secrets: Encrypted, rotatable, scoped, revocable
+  - Embed tokens: Encrypted, rotatable, scoped, revocable
+- **Not Encrypted**:
+  - Derived analytics: Not encrypted (aggregated, non-sensitive)
+  - Aggregated metrics: Not encrypted (aggregated, non-sensitive)
+  - Scores: Not encrypted (aggregated, non-sensitive)
+- **Key Rotation**: Automated key rotation policies defined in centralized config
+- **Access Control**: Role-based access control for encrypted data
+
+## 4. System Characteristics
 - Lightweight and elegant design
 - High performance and scalability
 - Real-time processing capability
@@ -366,3 +411,6 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Aggregation-first analytics approach
 - Tier-based retention policies with automatic decay
 - Codified system invariants for consistency and reliability
+- Edge case detection as signal quality indicators
+- Systemic anomaly detection separate from seller analytics
+- Comprehensive encryption strategy (at rest, in transit, secrets & keys)

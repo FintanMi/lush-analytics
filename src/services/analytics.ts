@@ -24,6 +24,10 @@ import type {
   EmbedKey,
   SystemInvariant,
   RetentionPolicy,
+  SignalQuality,
+  DegeneratePattern,
+  SystemicAnomaly,
+  SignalQualityRule,
 } from '@/types/analytics';
 
 const CACHE_DURATION = 30000;
@@ -555,6 +559,63 @@ export const analyticsApi = {
 
     if (error) throw error;
     return Array.isArray(data) ? data as RetentionPolicy[] : [];
+  },
+
+  async getSignalQuality(sellerId: string, metricType: 'SALE' | 'CLICK' | 'VIEW'): Promise<SignalQuality | null> {
+    const { data, error } = await supabase
+      .from('signal_quality')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .eq('metric_type', metricType)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data as SignalQuality | null;
+  },
+
+  async getDegeneratePatterns(sellerId: string, unresolved = true): Promise<DegeneratePattern[]> {
+    let query = supabase
+      .from('degenerate_patterns')
+      .select('*')
+      .eq('seller_id', sellerId);
+
+    if (unresolved) {
+      query = query.is('resolved_at', null);
+    }
+
+    const { data, error } = await query.order('detected_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as DegeneratePattern[] : [];
+  },
+
+  async getSystemicAnomalies(severity?: 'info' | 'warning' | 'critical'): Promise<SystemicAnomaly[]> {
+    let query = supabase
+      .from('systemic_anomalies')
+      .select('*')
+      .is('resolved_at', null);
+
+    if (severity) {
+      query = query.eq('severity', severity);
+    }
+
+    const { data, error } = await query.order('detected_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as SystemicAnomaly[] : [];
+  },
+
+  async getSignalQualityRules(): Promise<SignalQualityRule[]> {
+    const { data, error } = await supabase
+      .from('signal_quality_rules')
+      .select('*')
+      .eq('enabled', true)
+      .order('confidence_impact', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as SignalQualityRule[] : [];
   },
 
   subscribeToEvents(

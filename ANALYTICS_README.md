@@ -427,6 +427,126 @@ Formal state machine for insights:
 - Background jobs remove expired data
 - No manual intervention required
 
+## Signal Quality & Edge Case Detection
+
+### Philosophy
+**Edge cases are NOT errors** - they are low-confidence signal regimes. The system treats degenerate patterns as signals about data quality, not bugs to be fixed.
+
+### Confidence Regimes
+
+| Regime | Quality Score | Description |
+|--------|---------------|-------------|
+| High | ≥0.8 | Normal, organic data. Analytics are reliable. |
+| Medium | 0.5-0.8 | Some irregularities detected. Still usable. |
+| Low | 0.3-0.5 | Significant issues. Reduced confidence. Use with caution. |
+| Degenerate | <0.3 | Unsuitable for reliable analytics. |
+
+### Degenerate Patterns (Signals, Not Errors)
+
+**Constant Zero Values**:
+- Detection: >95% of values are exactly zero
+- Impact: Severe - indicates no real activity
+- Message: "Data consists primarily of zero values. Analytics unreliable."
+
+**Perfect Periodicity**:
+- Detection: >99% exact repeating pattern
+- Impact: Severe - likely bot or automated traffic
+- Message: "Perfect repeating pattern detected. Likely automated/bot traffic."
+
+**Impossible Regularity**:
+- Detection: Variance too low for organic behavior
+- Impact: Moderate - suspicious pattern
+- Message: "Unnaturally regular pattern. Confidence reduced."
+
+**Bot Signature**:
+- Detection: Events clustered in <1ms intervals
+- Impact: Moderate - automated behavior
+- Message: "Automated behavior detected. Results may not reflect organic activity."
+
+**Synthetic Data**:
+- Detection: Single value appears in >90% of events
+- Impact: Moderate - unnatural distribution
+- Message: "Data distribution suggests synthetic generation."
+
+### Systemic Anomalies (System Health, Not Seller Analytics)
+
+These flag system-level issues and do NOT pollute seller analytics:
+
+**Schema Change**:
+- Detection: Database schema modified
+- Impact: May affect data consistency
+- Action: Review recent changes
+
+**Timestamp Drift**:
+- Detection: Clock skew >1 minute
+- Impact: Time-based analytics may be inaccurate
+- Action: Check system clocks
+
+**Ingestion Burst**:
+- Detection: Traffic spike >10x baseline
+- Impact: May indicate bot attack or viral event
+- Action: Monitor and investigate
+
+**Rate Limit Breach**:
+- Detection: API limits exceeded
+- Impact: Some data may be dropped
+- Action: Review tier limits
+
+**Cache Thrashing**:
+- Detection: >100 invalidations/minute
+- Impact: Performance degraded, analytics delayed
+- Action: Optimize cache strategy
+
+**Computation Timeout**:
+- Detection: Analytics computation failed
+- Impact: Complex analytics unavailable
+- Action: Reduce data window or complexity
+
+## Security & Encryption
+
+### Encryption at Rest
+
+**Required** (AES-256-GCM, 90-day key rotation):
+- Event values
+- Configuration data (tier_config, alert_config, threshold_config)
+- Config snapshots
+- Export file URLs
+- API usage logs
+- Weekly reports
+
+### Encryption in Transit
+
+**Required** (TLS 1.3, no exceptions):
+- All API traffic
+- Widget embeds
+- Webhooks
+- Database connections
+- Internal service communication
+
+### Secrets & Key Material
+
+**Required** (AES-256-GCM, 30-day key rotation):
+- API keys (sellers.api_key)
+- Embed key hashes (embed_keys.key_hash)
+- Webhook secrets (decision_hooks.webhook_secret)
+
+**Properties**:
+- Rotatable: Keys can be rotated without service interruption
+- Scoped: Keys have limited permissions (read/write/admin)
+- Revocable: Keys can be instantly revoked
+
+### Data NOT Encrypted
+
+**Performance optimization** - these are already aggregated/derived:
+- Anomaly scores
+- Health scores
+- Prediction results
+- Aggregated metrics
+- Public configuration
+- Derived analytics
+
+**Reason**: No sensitive data, already anonymized through aggregation
+
 ## Technical Details
 
 ### DSP Algorithms
