@@ -15,8 +15,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Functionality**: Accept and process seller event data in real-time
 - **Payload Structure**:
   - sellerId: Seller identifier (opaque/surrogate key only)
-  - timestamp: Event timestamp (milliseconds)
-  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
+  - timestamp: Event timestamp (milliseconds)\n  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
 - **Processing Logic**: Add events to preallocated fixed-size ring buffer (contiguous array), with separate buffers per seller per metric. Use index modulo window size for circular access. No per-event reallocation or object churn.
 - **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n\n### 2.2 Batch Ingestion
 - **Endpoint**: POST /events/batch
@@ -32,7 +31,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Bayesian/Probabilistic Scoring**: Combine smoothed deviation, FFT spikes, and HFD to output anomaly score (0-1 range)
 - **Deterministic Anomaly Reproducibility**: Ensure same inputs always produce same outputs by fixing random seeds, deterministic sorting, and consistent computation order
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-\n### 2.5 Probabilistic Caching with Temporal Locality
+
+### 2.5 Probabilistic Caching with Temporal Locality
 - Per-seller hot metric caching\n- **lastComputedAt** timestamp tracking for each cached metric
 - Probabilistic refresh only when queried (not on every event)
 - Adaptive TTL strategy defined in centralized config:\n  - Hot sellers: recompute based on config TTL
@@ -50,8 +50,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - confidenceMessage: Confidence and sufficiency aware messaging explaining result reliability
   - configVersion: Configuration version used for this computation
   - signalQuality: Signal quality assessment (degenerate patterns, edge case flags)
-
-### 2.7 Prediction API
+\n### 2.7 Prediction API
 - **Endpoint**: GET /metrics/:seller/predictions
 - **Functionality**: Return predicted sales/traffic time series data with confidence bands
 - **Response Format**:\n  - predictions: Array of predicted values with timestamps
@@ -117,9 +116,9 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Medium-activity sellers: Moderate sampling
   - Low-activity sellers: Reduced sampling frequency
 - **Benefit**: Optimize system resources while maintaining accuracy
-\n### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration
-- **Functionality**: Live dashboard updates with AnomalyAlert component
+
+### 2.14 Real-time Dashboard Integration
+- **Technology**: Supabase Realtime integration\n- **Functionality**: Live dashboard updates with AnomalyAlert component
 - **Features**:
   - Real-time anomaly notifications
   - Live metric updates
@@ -130,8 +129,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - **Confidence & Sufficiency Aware Messaging**: Display contextual messages explaining result reliability based on data quality
   - **Insight Lifecycle Display**: Show insight states (Generated, Confirmed, Expired, Superseded) with visual indicators
   - **Signal Quality Indicators**: Display edge case flags and degenerate pattern warnings
-
-### 2.15 Event Log Management
+\n### 2.15 Event Log Management
 - **Functionality**: Display and manage event logs on dashboard
 - **Features**:
   - Pagination support
@@ -178,8 +176,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Endpoint**: POST /sell/anomaly
 - **Functionality**: Dedicated endpoint for selling/exposing anomaly detection results to external systems
 - **Payload Structure**:
-  - sellerId: Seller identifier (opaque/surrogate key)
-  - timeRange: Time range for anomaly detection\n  - includeAttribution: Boolean flag to include root cause breakdown
+  - sellerId: Seller identifier (opaque/surrogate key)\n  - timeRange: Time range for anomaly detection\n  - includeAttribution: Boolean flag to include root cause breakdown
 - **Response Format**:
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time-window definition
@@ -227,11 +224,9 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Rate-limit per embed key (defined in centralized config per tier)
   - Light branding watermark for free/basic tiers
   - Read-only scopes by default (no write access unless explicitly granted)
-  - Embed key authentication required
-
+  - Embed key authentication required\n
 ### 2.23 Auditable Configuration Management
-- **Functionality**: Track and audit all configuration changes
-- **Features**:
+- **Functionality**: Track and audit all configuration changes\n- **Features**:
   - Version control for config tables
   - \"Effective since\" timestamps for each config change
   - Config snapshot storage with reports
@@ -248,7 +243,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Constant zero values: Flag as low-signal regime
   - Perfect periodicity: Flag as potential bot activity signal
   - Impossible regularity: Flag as anomalous signal pattern
-- **Treatment**: Edge cases are signals, not bugs. They indicate low-confidence regimes and should be surfaced as signal quality indicators\n- **Output**: Signal quality score and edge case flags included in all analytics responses
+- **Treatment**: Edge cases are signals, not bugs. They indicate low-confidence regimes and should be surfaced as signal quality indicators
+- **Output**: Signal quality score and edge case flags included in all analytics responses
 - **Integration**: Signal quality indicators displayed in dashboard and included in API responses
 
 ### 2.25 Systemic Anomaly Detection
@@ -414,3 +410,174 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Edge case detection as signal quality indicators
 - Systemic anomaly detection separate from seller analytics
 - Comprehensive encryption strategy (at rest, in transit, secrets & keys)
+\n## 5. System Constitution
+
+### 5.1 Purpose and Scope
+This System Constitution defines the foundational principles, invariants, and governance rules that govern the E-commerce Seller Analytics API. It serves as the authoritative reference for all system design, implementation, and operational decisions. All system components, modules, and behaviors must conform to the principles and invariants articulated herein.
+
+### 5.2 Core Principles
+
+#### 5.2.1 Determinism and Reproducibility
+The system guarantees deterministic behavior: identical inputs must always produce identical outputs. This principle ensures auditability, debuggability, and trust. All computations use fixed random seeds, deterministic sorting, and consistent ordering. Reproducibility hashes are generated for all analytics outputs to enable verification.
+
+#### 5.2.2 Data Minimization and Privacy by Design
+The system enforces strict data minimization as a hard invariant. No personally identifiable information (PII) such as names, emails, or addresses may enter analytics paths. Seller identifiers are always opaque surrogate keys. Event payloads are stripped to behavioral signals only. All analytics operate on aggregated data, never on raw individual events. This principle is non-negotiable and enforced at the architectural level.
+
+#### 5.2.3 Transparency and Explainability
+The system provides full transparency into its decision-making processes. All analytics outputs include clear time-window definitions, data sufficiency indicators, confidence messaging, signal quality assessments, and configuration version references. Users must understand what the system knows, what it does not know, and how confident it is in its outputs.
+
+#### 5.2.4 Configuration as Single Source of Truth
+All system parameters, thresholds, and behaviors are defined in a centralized configuration system. No magic numbers or hardcoded logic are permitted. Configuration changes are versioned, timestamped, and auditable. This principle ensures consistency, maintainability, and governance.\n
+#### 5.2.5 Composability over Reusability
+The system prioritizes composability in its architecture. Modules are designed to be combined and extended, not merely reused. This principle enables flexibility, adaptability, and long-term maintainability.
+
+#### 5.2.6 Edge Cases as Signals, Not Errors
+The system treats edge cases (constant zero values, perfect periodicity, impossible regularity) as low-confidence signal regimes, not as errors or bugs. Edge cases are surfaced as signal quality indicators, providing valuable information about data quality and behavioral patterns.
+
+#### 5.2.7 Separation of Concerns: Seller Analytics vs. System Health
+Seller analytics and systemic anomalies are strictly separated. System health issues (schema changes, timestamp drift, ingestion bursts) are flagged independently and do not pollute seller-level analytics. This separation ensures clarity and prevents false positives in seller-facing outputs.
+
+### 5.3 System Invariants
+
+The following invariants are codified and enforced at the system level. Violations of these invariants constitute system failures and must be prevented by design:
+
+1. **Determinism Guarantee**: Same inputs always produce same outputs.\n2. **No Silent Recomputation**: All recomputations are logged and auditable.
+3. **No Hidden Thresholds**: All thresholds are defined in centralized config.
+4. **All Alerts Reference Data Sufficiency**: Every alert must include data sufficiency status.
+5. **Data Minimization**: No PII in analytics paths; seller IDs always opaque; event payloads stripped to behavioral signals only.
+6. **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events.
+7. **Edge Cases as Signals**: Edge cases treated as low-confidence signal regimes, not errors.
+8. **Systemic Anomalies Separate**: System health issues flagged separately from seller analytics.
+\n### 5.4 Governance and Change Management
+
+All changes to the System Constitution require formal review and approval. Configuration changes are versioned and auditable. System invariants may not be violated under any circumstances. This governance framework ensures stability, trust, and long-term system integrity.
+
+## 6. Public Trust & Security Statement
+
+### 6.1 Our Commitment to Trust and Security
+
+The E-commerce Seller Analytics API is built on a foundation of trust, transparency, and security. We recognize that our users entrust us with sensitive behavioral data, and we take this responsibility seriously. This Public Trust & Security Statement articulates our commitments and the measures we have implemented to protect user data and maintain system integrity.
+
+### 6.2 Data Privacy and Minimization
+
+We enforce strict data minimization as a core architectural principle. No personally identifiable information (PII) such as names, emails, or addresses is collected, stored, or processed in analytics paths. Seller identifiers are always opaque surrogate keys, ensuring anonymity. Event payloads are stripped to behavioral signals only, and all analytics operate on aggregated data. This approach minimizes privacy risks and ensures compliance with data protection regulations.
+
+### 6.3 Encryption and Data Protection
+
+We employ comprehensive encryption strategies to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, and usage logs are encrypted using industry-standard encryption algorithms.
+- **In Transit**: All API traffic, widget embeds, and webhooks use TLS encryption without exception.
+- **Secrets & Keys**: API keys, webhook secrets, and embed tokens are encrypted, rotatable, scoped, and revocable. Automated key rotation policies are enforced.
+\nDerived analytics, aggregated metrics, and scores are not encrypted, as they are aggregated and non-sensitive by design.
+
+### 6.4 Determinism and Auditability
+
+We guarantee deterministic behavior: identical inputs always produce identical outputs. This ensures auditability, debuggability, and trust. All computations are logged, and reproducibility hashes are generated for verification. Configuration changes are versioned and auditable, providing a complete audit trail.
+
+### 6.5 Transparency and Explainability
+
+We provide full transparency into our decision-making processes. All analytics outputs include clear time-window definitions, data sufficiency indicators, confidence messaging, signal quality assessments, and configuration version references. Users always know what the system knows, what it does not know, and how confident it is in its outputs.
+
+### 6.6 Retention and Data Lifecycle\n
+We enforce tier-based retention policies with explicit expiry windows. Data is automatically deleted based on retention policies, ensuring compliance with data protection regulations and minimizing long-term storage risks. Retention periods are clearly communicated and enforced at the system level.
+
+### 6.7 Security Incident Response
+
+We maintain a formal security incident response plan. In the event of a security incident, we will promptly investigate, mitigate, and communicate with affected users. We are committed to continuous improvement and learning from security incidents.\n
+### 6.8 Compliance and Certifications
+
+We are committed to compliance with relevant data protection regulations, including GDPR and CCPA. We continuously monitor regulatory developments and adapt our practices accordingly.\n
+### 6.9 Contact and Accountability
+
+For security concerns, questions, or incident reports, users may contact our security team at security@example.com. We are accountable to our users and committed to maintaining their trust.\n
+## 7. Signal Semantics Glossary
+
+This glossary defines the precise meanings of key terms used throughout the system. These definitions are authoritative and must be consistently applied across all system components, documentation, and user-facing interfaces.
+
+### 7.1 Anomaly\n
+**Definition**: An anomaly is a statistically significant deviation from expected behavioral patterns, quantified as a probabilistic score in the range [0, 1]. An anomaly score of 0 indicates no deviation; a score of 1 indicates maximum deviation.
+
+**Composition**: Anomaly scores are computed using a Bayesian/probabilistic combination of:\n- **FFT Spike Contribution**: Periodic spikes detected via Fast Fourier Transform analysis.\n- **HFD Complexity Contribution**: Time series complexity measured via Higuchi Fractal Dimension.
+- **Trend Deviation Contribution**: Deviation from smoothed trend lines.
+- **Smoothed Deviation Contribution**: Deviation from FIR-smoothed baseline.
+
+**Interpretation**: Anomalies indicate potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
+
+**Attribution**: All anomaly outputs include root cause breakdown, showing the percentage contribution of each component to the overall anomaly score.
+
+### 7.2 Confidence
+
+**Definition**: Confidence is a measure of the system's certainty in its outputs, expressed as a qualitative or quantitative indicator. Confidence depends on data sufficiency, signal quality, and computational stability.
+
+**Factors Affecting Confidence**:
+- **Data Sufficiency**: Sufficient data points are required for reliable analytics. Insufficient data reduces confidence.
+- **Signal Quality**: High signal quality (low noise, no degenerate patterns) increases confidence. Low signal quality (edge cases, degenerate patterns) reduces confidence.
+- **Computational Stability**: Deterministic, reproducible computations increase confidence. Non-deterministic or unstable computations reduce confidence.
+
+**Confidence Messaging**: All analytics outputs include confidence-aware messaging, explaining the reliability of results based on data quality and sufficiency.
+
+**Confidence Bands**: Predictions include confidence bands (± intervals) around predicted values, visualizing uncertainty.\n
+### 7.3 Sufficiency
+
+**Definition**: Sufficiency is a binary or graduated indicator of whether the system has enough data to produce reliable analytics. Sufficiency is determined by comparing the number of available data points to the minimum required data points for a given analysis.
+
+**Sufficiency Indicators**:
+- **Sufficient**: The system has enough data to produce reliable analytics.
+- **Insufficient**: The system does not have enough data. Analytics may be unreliable or unavailable.
+\n**Sufficiency Thresholds**: Minimum data point requirements are defined in centralized configuration and vary by analysis type (anomaly detection, prediction, health scoring, etc.).
+
+**Sufficiency Messaging**: All analytics outputs include data sufficiency indicators and messaging, explaining whether sufficient data is available and how many data points are required vs. available.
+
+**System Invariant**: All alerts must reference data sufficiency status. Alerts based on insufficient data must be clearly flagged.\n
+### 7.4 Signal Quality
+
+**Definition**: Signal quality is an assessment of the reliability and interpretability of input data. High signal quality indicates clean, consistent, and interpretable data. Low signal quality indicates noisy, inconsistent, or degenerate data patterns.
+
+**Signal Quality Indicators**:
+- **Degenerate Patterns**: Constant zero values, perfect periodicity, impossible regularity. These patterns are flagged as low-confidence signal regimes.
+- **Edge Case Flags**: Indicators of unusual or boundary-case data patterns.\n- **Noise Levels**: Assessment of data noise and variability.
+\n**Treatment**: Signal quality indicators are surfaced in all analytics outputs. Low signal quality reduces confidence and is communicated to users via confidence-aware messaging.
+
+**Philosophy**: Edge cases and degenerate patterns are treated as signals, not errors. They provide valuable information about data quality and behavioral patterns.
+
+### 7.5 Time Window
+
+**Definition**: A time window is the temporal range over which analytics are computed. Time windows are defined by a start timestamp, end timestamp, and window size (duration).
+
+**Clarity Requirement**: All analytics outputs must include clear time-window definitions, ensuring users understand the temporal scope of the analysis.
+
+**Ring Buffer Alignment**: Time windows align with the ring buffer structure, ensuring efficient and consistent data access.\n
+### 7.6 Reproducibility Hash
+
+**Definition**: A reproducibility hash is a cryptographic hash value generated from the inputs and configuration used to produce an analytics output. It enables deterministic verification: identical inputs and configuration will always produce the same hash.
+
+**Purpose**: Reproducibility hashes ensure auditability and trust. Users can verify that analytics outputs are deterministic and have not been tampered with.
+\n**Inclusion**: All analytics outputs include a reproducibility hash.\n
+### 7.7 Config Version
+
+**Definition**: A config version is a unique identifier for a specific version of the centralized configuration system. Config versions are timestamped and auditable.
+\n**Purpose**: Config versions ensure that analytics outputs can be traced back to the exact configuration used to produce them. This enables reproducibility, auditability, and debugging.
+
+**Inclusion**: All analytics outputs include the config version used for computation.
+
+### 7.8 Insight Lifecycle State
+
+**Definition**: An insight lifecycle state is the current status of an auto-generated insight. Insights transition through states based on time, data updates, and user feedback.
+
+**States**:
+- **Generated**: Newly created insight.
+- **Confirmed**: Insight validated by subsequent data or user action.
+- **Expired**: Insight no longer relevant due to time passage.
+- **Superseded**: Insight replaced by newer, more accurate insight.
+\n**Purpose**: Insight lifecycle states provide context and relevance, helping users understand the current validity and applicability of insights.
+
+### 7.9 Systemic Anomaly
+
+**Definition**: A systemic anomaly is an issue affecting the system itself, rather than seller-level behavior. Systemic anomalies include schema changes, timestamp drift, and ingestion bursts.
+
+**Separation**: Systemic anomalies are flagged separately from seller analytics, ensuring clarity and preventing false positives in seller-facing outputs.
+
+**Monitoring**: Systemic anomalies are monitored via dedicated system health endpoints and dashboard panels.
+
+---
+
+This glossary provides precise, authoritative definitions for key system terms. Consistent use of these definitions across all system components, documentation, and user-facing interfaces is mandatory.
