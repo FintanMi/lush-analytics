@@ -222,3 +222,76 @@ export interface InsightSummary {
   confidence: number;
   dataSufficiency: 'insufficient' | 'minimal' | 'adequate' | 'optimal';
 }
+
+export interface ConfigVersion {
+  id: string;
+  table_name: string;
+  record_id: string;
+  config_data: Record<string, unknown>;
+  effective_since: string;
+  effective_until: string | null;
+  changed_by: string | null;
+  change_reason: string | null;
+  created_at: string;
+}
+
+export interface ConfigSnapshot {
+  id: string;
+  snapshot_type: 'weekly_report' | 'export' | 'audit';
+  reference_id: string | null;
+  tier_config: Record<string, unknown>;
+  alert_config: Record<string, unknown>;
+  threshold_config: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface InsightLifecycle {
+  id: string;
+  insight_id: string;
+  seller_id: string;
+  insight_data: Record<string, unknown>;
+  state: 'generated' | 'confirmed' | 'expired' | 'superseded';
+  generated_at: string;
+  confirmed_at: string | null;
+  expired_at: string | null;
+  superseded_by: string | null;
+  superseded_at: string | null;
+  data_sufficiency: string;
+  confidence_score: number;
+  created_at: string;
+}
+
+export interface EmbedKey {
+  id: string;
+  seller_id: string;
+  key_hash: string;
+  key_prefix: string;
+  widget_type: 'anomaly' | 'health' | 'prediction' | 'all';
+  rate_limit_per_hour: number;
+  scopes: string[];
+  enabled: boolean;
+  created_at: string;
+  last_used_at: string | null;
+  usage_count: number;
+}
+
+export interface SystemInvariant {
+  id: string;
+  category: 'determinism' | 'computation' | 'alerts' | 'data_minimization' | 'retention';
+  invariant_name: string;
+  description: string;
+  enforcement_level: 'hard' | 'soft' | 'advisory';
+  validation_query: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RetentionPolicy {
+  id: string;
+  tier: string;
+  data_type: 'events' | 'metrics_cache' | 'insights' | 'exports' | 'api_usage';
+  retention_days: number;
+  decay_strategy: 'hard_delete' | 'soft_delete' | 'archive';
+  last_cleanup_at: string | null;
+  created_at: string;
+}

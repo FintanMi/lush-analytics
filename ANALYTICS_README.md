@@ -319,6 +319,114 @@ All system parameters are data-driven and stored in database tables:
 
 All thresholds can be updated in the database without code changes.
 
+## System Governance
+
+### Configuration Auditing
+All configuration changes are tracked with full audit trails:
+
+**Config Versioning** (`config_versions`):
+- Every change to tier_config, alert_config, threshold_config creates a new version
+- Tracks effective_since and effective_until timestamps
+- Records who made the change and why
+- Enables rollback to previous configurations
+- Point-in-time configuration queries
+
+**Config Snapshots** (`config_snapshots`):
+- Automatic snapshots created for weekly reports, exports, and audits
+- Captures complete system configuration at specific moments
+- Ensures reports always reference the configuration that generated them
+- Enables reproducible analysis
+
+### Insight Lifecycle Management
+Formal state machine for insights:
+
+**States**:
+- `generated`: Initial state when insight is created
+- `confirmed`: User has acknowledged and validated the insight
+- `expired`: Insight no longer relevant (auto-expires based on data sufficiency)
+- `superseded`: Replaced by newer, more accurate insight
+
+**Auto-Expiry Rules**:
+- Insufficient data: 1 hour
+- Minimal data: 24 hours
+- Adequate data: 7 days
+- Optimal data: 30 days
+
+**State Transitions**:
+- Generated → Confirmed, Expired, Superseded
+- Confirmed → Expired, Superseded
+- Expired/Superseded → Terminal states
+
+### Embed Widget Guardrails
+
+**Rate Limiting**:
+- Free: 100 requests/hour per embed key
+- Basic: 1,000 requests/hour
+- Pro: 10,000 requests/hour
+- Enterprise: Unlimited
+
+**Branding Requirements**:
+- Free/Basic: "Powered by Analytics API" watermark required
+- Pro/Enterprise: Custom branding allowed, no watermark
+
+**Access Control**:
+- Read-only scopes by default
+- Embed keys separate from API keys
+- Per-widget-type access control (anomaly, health, prediction, all)
+- Usage tracking per embed key
+
+### System Invariants
+
+**Determinism Guarantees** (Hard):
+- Same input data always produces identical outputs
+- No random number generation in analytics algorithms
+- Algorithm implementations are versioned and immutable
+
+**Computation Transparency** (Hard):
+- All recomputations logged with timestamps
+- Explicit cache invalidation only
+- lastComputedAt timestamps required for all cached metrics
+- Lazy evaluation: metrics computed only when queried
+
+**Alert Requirements** (Hard):
+- All alerts must include data sufficiency level
+- Each alert type has exactly one primary trigger condition
+- All thresholds must be in threshold_config table
+- No hidden or hardcoded thresholds
+
+**Data Minimization** (Hard):
+- No PII (names, emails, addresses) in analytics data paths
+- Seller IDs must be UUIDs (opaque, never sequential integers)
+- Event payloads contain only behavioral signals (type, value, timestamp)
+- Analytics computed on aggregates, never individual events
+- Exports contain only aggregated metrics, never raw events
+
+**Retention Policies** (Hard):
+- Data retention periods determined by pricing tier
+- All data has explicit expiry timestamp (expires_at column)
+- Automatic decay: old data removed automatically
+- No indefinite storage, even for enterprise tier
+
+### Data Retention by Tier
+
+| Tier | Events | Metrics Cache | Insights | Exports | API Usage |
+|------|--------|---------------|----------|---------|-----------|
+| Free | 7 days | 1 day | 7 days | 1 day | 7 days |
+| Basic | 30 days | 7 days | 30 days | 7 days | 30 days |
+| Pro | 90 days | 30 days | 90 days | 30 days | 90 days |
+| Enterprise | 365 days | 90 days | 365 days | 90 days | 365 days |
+
+**Decay Strategies**:
+- Free/Basic: Hard delete (permanent removal)
+- Pro: Archive (moved to cold storage)
+- Enterprise: Archive with extended retention
+
+**Automatic Cleanup**:
+- Triggered by database triggers on insert
+- expires_at timestamp set automatically based on tier
+- Background jobs remove expired data
+- No manual intervention required
+
 ## Technical Details
 
 ### DSP Algorithms
@@ -440,6 +548,26 @@ Single primary trigger per alert type:
 
 No multi-dimensional alert triggers. Each alert has one clear condition.
 
+### Privacy & Security
+
+**Data Minimization**:
+- No PII stored in analytics tables
+- Seller IDs are opaque UUIDs
+- Event payloads stripped to behavioral signals only
+- Aggregation-first analytics (never expose individual events)
+
+**Access Control**:
+- API keys for backend access
+- Embed keys for widget access
+- Separate scopes for read/write/admin operations
+- Rate limiting per key type
+
+**Audit Trail**:
+- All configuration changes tracked
+- Config snapshots with reports
+- Insight lifecycle states
+- Embed key usage monitoring
+
 ## Color System
 
 The application uses a professional analytics color scheme with dynamic CSS classes:
@@ -469,6 +597,25 @@ Dynamic alert classes:
   style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 </iframe>
 ```
+
+**Embed Key Management**:
+```typescript
+// Create embed key
+const { key, embedKey } = await analyticsApi.createEmbedKey(
+  sellerId,
+  'anomaly', // widget type
+  1000 // rate limit per hour
+);
+
+// Use in widget
+<iframe src={`/embed/anomaly?embedKey=${key}`} />
+```
+
+**Guardrails**:
+- Rate limited per embed key (tier-based)
+- Read-only scopes by default
+- Free/Basic tiers show "Powered by Analytics API" watermark
+- Pro/Enterprise can use custom branding
 
 #### React Component
 ```typescript

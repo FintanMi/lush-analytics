@@ -18,6 +18,12 @@ import type {
   ExportRequest,
   ExportHistory,
   InsightSummary,
+  ConfigVersion,
+  ConfigSnapshot,
+  InsightLifecycle,
+  EmbedKey,
+  SystemInvariant,
+  RetentionPolicy,
 } from '@/types/analytics';
 
 const CACHE_DURATION = 30000;
@@ -392,6 +398,163 @@ export const analyticsApi = {
       confidence: anomaly.metrics.dataPoints > 300 ? 0.9 : anomaly.metrics.dataPoints > 100 ? 0.7 : 0.5,
       dataSufficiency: anomaly.metrics.dataSufficiency,
     };
+  },
+
+  async createConfigSnapshot(type: 'weekly_report' | 'export' | 'audit', referenceId?: string): Promise<ConfigSnapshot> {
+    const [tierConfigs, alertConfigs, thresholds] = await Promise.all([
+      supabase.from('tier_config').select('*'),
+      supabase.from('alert_config').select('*'),
+      analyticsApi.getThresholds(),
+    ]);
+
+    const { data, error } = await supabase
+      .from('config_snapshots')
+      .insert([{
+        snapshot_type: type,
+        reference_id: referenceId || null,
+        tier_config: tierConfigs.data || {},
+        alert_config: alertConfigs.data || {},
+        threshold_config: thresholds,
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ConfigSnapshot;
+  },
+
+  async trackConfigChange(
+    tableName: string,
+    recordId: string,
+    configData: Record<string, unknown>,
+    changedBy?: string,
+    changeReason?: string
+  ): Promise<ConfigVersion> {
+    // Mark previous version as ended
+    await supabase
+      .from('config_versions')
+      .update({ effective_until: new Date().toISOString() } as never)
+      .eq('table_name', tableName)
+      .eq('record_id', recordId)
+      .is('effective_until', null);
+
+    // Create new version
+    const { data, error } = await supabase
+      .from('config_versions')
+      .insert([{
+        table_name: tableName,
+        record_id: recordId,
+        config_data: configData,
+        effective_since: new Date().toISOString(),
+        changed_by: changedBy || null,
+        change_reason: changeReason || null,
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ConfigVersion;
+  },
+
+  async createInsightLifecycle(
+    insightId: string,
+    sellerId: string,
+    insightData: Record<string, unknown>,
+    dataSufficiency: string,
+    confidenceScore: number
+  ): Promise<InsightLifecycle> {
+    const { data, error } = await supabase
+      .from('insight_lifecycle')
+      .insert([{
+        insight_id: insightId,
+        seller_id: sellerId,
+        insight_data: insightData,
+        state: 'generated',
+        data_sufficiency: dataSufficiency,
+        confidence_score: confidenceScore,
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as InsightLifecycle;
+  },
+
+  async updateInsightState(
+    insightId: string,
+    newState: 'confirmed' | 'expired' | 'superseded',
+    supersededBy?: string
+  ): Promise<InsightLifecycle> {
+    const updates: Record<string, unknown> = { state: newState };
+    
+    if (newState === 'confirmed') {
+      updates.confirmed_at = new Date().toISOString();
+    } else if (newState === 'expired') {
+      updates.expired_at = new Date().toISOString();
+    } else if (newState === 'superseded' && supersededBy) {
+      updates.superseded_by = supersededBy;
+      updates.superseded_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('insight_lifecycle')
+      .update(updates as never)
+      .eq('insight_id', insightId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as InsightLifecycle;
+  },
+
+  async createEmbedKey(
+    sellerId: string,
+    widgetType: 'anomaly' | 'health' | 'prediction' | 'all',
+    rateLimitPerHour?: number
+  ): Promise<{ key: string; embedKey: EmbedKey }> {
+    // Generate random key
+    const key = `emb_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    const keyHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
+      .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+    const { data, error } = await supabase
+      .from('embed_keys')
+      .insert([{
+        seller_id: sellerId,
+        key_hash: keyHash,
+        key_prefix: key.substring(0, 8),
+        widget_type: widgetType,
+        rate_limit_per_hour: rateLimitPerHour || 100,
+        scopes: ['read'],
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { key, embedKey: data as EmbedKey };
+  },
+
+  async getSystemInvariants(): Promise<SystemInvariant[]> {
+    const { data, error } = await supabase
+      .from('system_invariants')
+      .select('*')
+      .order('category', { ascending: true });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as SystemInvariant[] : [];
+  },
+
+  async getRetentionPolicies(tier?: string): Promise<RetentionPolicy[]> {
+    let query = supabase.from('retention_policies').select('*');
+    
+    if (tier) {
+      query = query.eq('tier', tier);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as RetentionPolicy[] : [];
   },
 
   subscribeToEvents(
