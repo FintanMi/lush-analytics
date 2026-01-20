@@ -1,7 +1,8 @@
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter } from '@/components/ui/sidebar';
+import { useState } from 'react';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Upload, Users, Menu, Activity } from 'lucide-react';
+import { LayoutDashboard, Upload, Users, Menu, Activity, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { ModeToggle } from '@/components/common/ModeToggle';
 
@@ -76,31 +77,55 @@ function SidebarNav() {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const [open, setOpen] = useState(true);
+
   return (
-    <SidebarProvider>
+    <SidebarProvider open={open} onOpenChange={setOpen}>
       <div className="flex min-h-screen w-full">
-        <Sidebar className="hidden lg:block">
+        <Sidebar collapsible="icon" className="hidden lg:flex">
           <SidebarNav />
         </Sidebar>
 
-        <div className="lg:hidden fixed top-4 left-4 z-50">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu className="h-5 w-5" />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-14 items-center gap-4 px-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(!open)}
+                className="hidden lg:flex"
+              >
+                {open ? (
+                  <PanelLeftClose className="h-5 w-5" />
+                ) : (
+                  <PanelLeft className="h-5 w-5" />
+                )}
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-64">
-              <Sidebar>
-                <SidebarNav />
-              </Sidebar>
-            </SheetContent>
-          </Sheet>
-        </div>
 
-        <main className="flex-1 overflow-auto bg-background">
-          {children}
-        </main>
+              <div className="lg:hidden">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="p-0 w-64">
+                    <Sidebar>
+                      <SidebarNav />
+                    </Sidebar>
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              <div className="flex-1" />
+              <ModeToggle />
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-auto bg-background">
+            {children}
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );

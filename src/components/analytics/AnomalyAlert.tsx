@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AnomalyAlertProps {
   score: number;
@@ -27,28 +28,32 @@ export function AnomalyAlert({ score, metrics }: AnomalyAlertProps) {
       title: 'Critical Anomaly Detected',
       description: 'Unusual activity patterns detected. Immediate attention recommended.',
       variant: 'destructive' as const,
-      badgeClass: 'bg-destructive text-destructive-foreground',
+      alertClass: 'alert-critical',
+      badgeClass: 'badge-critical',
     },
     warning: {
       icon: AlertCircle,
       title: 'Moderate Anomaly Detected',
       description: 'Some irregular patterns observed. Monitor closely.',
       variant: 'default' as const,
-      badgeClass: 'bg-warning text-warning-foreground',
+      alertClass: 'alert-warning',
+      badgeClass: 'badge-warning',
     },
     info: {
       icon: Info,
       title: 'Minor Anomaly Detected',
       description: 'Slight variations from normal patterns.',
       variant: 'default' as const,
-      badgeClass: 'bg-info text-info-foreground',
+      alertClass: 'alert-info',
+      badgeClass: 'badge-info',
     },
     normal: {
       icon: CheckCircle,
       title: 'Normal Activity',
       description: 'All metrics within expected ranges.',
       variant: 'default' as const,
-      badgeClass: 'bg-success text-success-foreground',
+      alertClass: 'alert-success',
+      badgeClass: 'badge-success',
     },
   };
 
@@ -56,7 +61,7 @@ export function AnomalyAlert({ score, metrics }: AnomalyAlertProps) {
   const Icon = config.icon;
 
   return (
-    <Alert variant={config.variant} className="mb-4">
+    <Alert variant={config.variant} className={cn('mb-4', config.alertClass)}>
       <Icon className="h-4 w-4" />
       <AlertTitle className="flex items-center gap-2">
         {config.title}
