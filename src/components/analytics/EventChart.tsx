@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { Event } from '@/types/analytics';
+import { format } from 'date-fns';
 
 interface EventChartProps {
   events: Event[];
@@ -9,40 +10,51 @@ interface EventChartProps {
 }
 
 export function EventChart({ events, title = 'Event Timeline', description }: EventChartProps) {
-  const chartData = events.map((event) => ({
-    time: new Date(event.timestamp).toLocaleTimeString(),
-    value: event.value,
-    type: event.type,
-  }));
-
   const salesData = events.filter(e => e.type === 'SALE').map(e => ({
-    time: new Date(e.timestamp).toLocaleTimeString(),
+    timestamp: e.timestamp,
     Sales: e.value,
   }));
 
   const clicksData = events.filter(e => e.type === 'CLICK').map(e => ({
-    time: new Date(e.timestamp).toLocaleTimeString(),
+    timestamp: e.timestamp,
     Clicks: e.value,
   }));
 
   const viewsData = events.filter(e => e.type === 'VIEW').map(e => ({
-    time: new Date(e.timestamp).toLocaleTimeString(),
+    timestamp: e.timestamp,
     Views: e.value,
   }));
 
-  const allTimes = [...new Set(events.map(e => new Date(e.timestamp).toLocaleTimeString()))];
-  const combinedData = allTimes.map(time => {
-    const sale = salesData.find(d => d.time === time);
-    const click = clicksData.find(d => d.time === time);
-    const view = viewsData.find(d => d.time === time);
+  const allTimestamps = [...new Set(events.map(e => e.timestamp))].sort((a, b) => a - b);
+  const combinedData = allTimestamps.map(timestamp => {
+    const sale = salesData.find(d => d.timestamp === timestamp);
+    const click = clicksData.find(d => d.timestamp === timestamp);
+    const view = viewsData.find(d => d.timestamp === timestamp);
     
     return {
-      time,
+      timestamp,
       Sales: sale?.Sales || 0,
       Clicks: click?.Clicks || 0,
       Views: view?.Views || 0,
     };
   });
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-medium mb-2">{format(new Date(data.timestamp), 'MMM dd, yyyy HH:mm')}</p>
+          {payload.map((entry: any) => (
+            <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Card>
@@ -55,7 +67,10 @@ export function EventChart({ events, title = 'Event Timeline', description }: Ev
           <LineChart data={combinedData}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis 
-              dataKey="time" 
+              dataKey="timestamp"
+              type="number"
+              domain={['dataMin', 'dataMax']}
+              tickFormatter={(timestamp) => format(new Date(timestamp), 'MMM dd HH:mm')}
               className="text-xs"
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
             />
@@ -63,13 +78,7 @@ export function EventChart({ events, title = 'Event Timeline', description }: Ev
               className="text-xs"
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
             />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-              }}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Line 
               type="monotone" 

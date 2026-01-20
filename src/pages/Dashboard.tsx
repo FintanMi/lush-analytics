@@ -4,7 +4,12 @@ import { MetricsCard } from '@/components/analytics/MetricsCard';
 import { AnomalyAlert } from '@/components/analytics/AnomalyAlert';
 import { EventChart } from '@/components/analytics/EventChart';
 import { PredictionChart } from '@/components/analytics/PredictionChart';
+import { InsightsPanel } from '@/components/analytics/InsightsPanel';
+import { HealthScoreCard } from '@/components/analytics/HealthScoreCard';
+import { PredictiveAlerts } from '@/components/analytics/PredictiveAlerts';
+import { BehaviorFingerprintCard } from '@/components/analytics/BehaviorFingerprintCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -14,8 +19,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, MousePointer, Eye, Activity, RefreshCw } from 'lucide-react';
-import type { Seller, Event, AnomalyResponse, PredictionResponse } from '@/types/analytics';
+import { TrendingUp, MousePointer, Eye, Activity, RefreshCw, Radio } from 'lucide-react';
+import type { 
+  Seller, 
+  Event, 
+  AnomalyResponse, 
+  PredictionResponse,
+  AutoInsight,
+  SellerHealthScore,
+  BehaviorFingerprint,
+  PredictiveAlert,
+} from '@/types/analytics';
 
 export default function Dashboard() {
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -23,8 +37,13 @@ export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [anomalyData, setAnomalyData] = useState<AnomalyResponse | null>(null);
   const [predictionData, setPredictionData] = useState<PredictionResponse | null>(null);
+  const [insights, setInsights] = useState<AutoInsight[]>([]);
+  const [healthScore, setHealthScore] = useState<SellerHealthScore | null>(null);
+  const [fingerprint, setFingerprint] = useState<BehaviorFingerprint | null>(null);
+  const [alerts, setAlerts] = useState<PredictiveAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [liveUpdates, setLiveUpdates] = useState(true);
 
   useEffect(() => {
     loadSellers();
@@ -35,6 +54,19 @@ export default function Dashboard() {
       loadDashboardData();
     }
   }, [selectedSeller]);
+
+  useEffect(() => {
+    if (selectedSeller && liveUpdates) {
+      const subscription = analyticsApi.subscribeToEvents(selectedSeller, (newEvent) => {
+        setEvents((prev) => [newEvent, ...prev].slice(0, 100));
+        loadDashboardData();
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [selectedSeller, liveUpdates]);
 
   const loadSellers = async () => {
     try {
@@ -55,15 +87,20 @@ export default function Dashboard() {
 
     setRefreshing(true);
     try {
-      const [eventsData, anomaly, predictions] = await Promise.all([
+      const [eventsData, anomaly, predictions, insightsData] = await Promise.all([
         analyticsApi.getRecentEvents(selectedSeller, 24),
         analyticsApi.getAnomalyScore(selectedSeller, 'SALE'),
         analyticsApi.getPredictions(selectedSeller, 'SALE', 10),
+        analyticsApi.getInsights(selectedSeller, 'SALE'),
       ]);
 
       setEvents(eventsData);
       setAnomalyData(anomaly);
       setPredictionData(predictions);
+      setInsights(insightsData.insights || []);
+      setHealthScore(insightsData.healthScore);
+      setFingerprint(insightsData.fingerprint);
+      setAlerts(insightsData.alerts || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -111,6 +148,14 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Real-time seller analytics and anomaly detection</p>
         </div>
         <div className="flex items-center gap-4">
+          <Button
+            onClick={() => setLiveUpdates(!liveUpdates)}
+            variant={liveUpdates ? 'default' : 'outline'}
+            size="sm"
+          >
+            <Radio className={`h-4 w-4 mr-2 ${liveUpdates ? 'animate-pulse' : ''}`} />
+            {liveUpdates ? 'Live' : 'Paused'}
+          </Button>
           <Select value={selectedSeller} onValueChange={setSelectedSeller}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select a seller" />
@@ -137,6 +182,8 @@ export default function Dashboard() {
       {anomalyData && (
         <AnomalyAlert score={anomalyData.anomalyScore} metrics={anomalyData.metrics} />
       )}
+
+      {alerts.length > 0 && <PredictiveAlerts alerts={alerts} />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
@@ -178,6 +225,12 @@ export default function Dashboard() {
         {predictionData && predictionData.predictions.length > 0 && (
           <PredictionChart data={predictionData} title="Sales Forecast" />
         )}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        {healthScore && <HealthScoreCard healthScore={healthScore} />}
+        {fingerprint && <BehaviorFingerprintCard fingerprint={fingerprint} />}
+        {insights.length > 0 && <InsightsPanel insights={insights} />}
       </div>
 
       {predictionData && predictionData.predictions.length === 0 && (

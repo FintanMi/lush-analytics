@@ -6,9 +6,11 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 
 ### 🎯 Core Capabilities
 - **Real-time Event Ingestion**: Accept and process SALE, CLICK, and VIEW events
+- **Batch Ingestion**: High-throughput batch processing (up to 1000 events per request)
 - **Anomaly Detection**: Advanced DSP-based detection using FIR smoothing, FFT analysis, and Higuchi Fractal Dimension
-- **Predictive Analytics**: Short-term sales forecasting with confidence intervals
-- **Probabilistic Caching**: Adaptive TTL strategy for optimal performance
+- **Predictive Analytics**: Short-term sales forecasting with confidence intervals and uncertainty bands
+- **Probabilistic Caching**: Client-side 30-second cache with adaptive TTL strategy
+- **Real-time Updates**: Supabase Realtime integration for live dashboard updates
 - **Interactive Dashboard**: Real-time visualization of metrics and trends
 
 ### 🔬 DSP Analytics Pipeline
@@ -17,19 +19,39 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **HFD (Higuchi Fractal Dimension)**: Measures time series complexity to identify bot activity
 - **Bayesian Scoring**: Combines multiple signals for accurate anomaly detection (0-1 scale)
 
+### 🤖 Auto-Insights Engine
+Lightweight rule-based and probability-based insights generation:
+
+**Inputs:**
+- Anomaly score from DSP pipeline
+- FFT periodicity detection
+- HFD complexity measurement
+- Recent trend slope analysis
+
+**Outputs:**
+- **Anomaly Attribution**: Root cause breakdown showing contribution of each factor
+- **Predictive Alerts**: Trend acceleration, FFT phase alignment, confidence decay warnings
+- **Seller Health Score**: Composite index based on volatility, anomaly frequency, predictive risk, and data consistency
+- **Behavior Fingerprinting**: FFT + HFD + timing entropy analysis to detect bot clusters, manipulation patterns, and strategy changes
+
 ### 📊 Dashboard Features
 - Real-time metrics cards (Sales, Clicks, Views)
-- Anomaly alerts with severity levels
-- Multi-series event timeline charts
-- Sales prediction charts with confidence bands
-- Seller management interface
+- Anomaly alerts with severity levels and dynamic CSS styling
+- Multi-series event timeline charts with proper timestamp formatting
+- Sales prediction charts with confidence bands (±σ around prediction)
+- Visual separation between historical and predicted data
+- Auto-insights panel with root cause attribution
+- Seller health score visualization
+- Predictive alerts panel
+- Behavior fingerprint analysis
+- Live update toggle with real-time Supabase subscriptions
 
 ## Getting Started
 
 ### Usage
 
 #### 1. Access the Dashboard
-Navigate to the root URL to view the analytics dashboard. Select a seller from the dropdown to view their metrics.
+Navigate to the root URL to view the analytics dashboard. Select a seller from the dropdown to view their metrics. Toggle "Live" mode to enable real-time updates.
 
 #### 2. Ingest Events
 Go to "Event Ingestion" page to submit events:
@@ -46,7 +68,7 @@ Use the "Sellers" page to:
 
 ### API Endpoints
 
-#### Event Ingestion
+#### Event Ingestion (Single)
 ```
 POST /functions/v1/event-ingestion
 Content-Type: application/json
@@ -57,6 +79,32 @@ Content-Type: application/json
   "type": "SALE" | "CLICK" | "VIEW",
   "value": 99.99
 }
+```
+
+#### Batch Event Ingestion
+```
+POST /functions/v1/batch-ingestion
+Content-Type: application/json
+
+{
+  "events": [
+    {
+      "sellerId": "uuid",
+      "timestamp": 1234567890000,
+      "type": "SALE",
+      "value": 99.99
+    },
+    ...
+  ]
+}
+
+Response:
+{
+  "success": true,
+  "inserted": 100
+}
+
+Limits: Maximum 1000 events per batch
 ```
 
 #### Anomaly Detection
@@ -84,7 +132,9 @@ Response:
     {
       "timestamp": 1234567890000,
       "predicted": 150.5,
-      "confidence": 0.85
+      "confidence": 0.85,
+      "upperBound": 180.2,
+      "lowerBound": 120.8
     }
   ],
   "historical": [...],
@@ -92,6 +142,57 @@ Response:
     "dataPoints": 256,
     "predictionSteps": 10
   }
+}
+```
+
+#### Auto-Insights Engine
+```
+GET /functions/v1/insights-engine?sellerId={uuid}&type={SALE|CLICK|VIEW}
+
+Response:
+{
+  "insights": [
+    {
+      "type": "anomaly" | "trend" | "pattern" | "alert",
+      "severity": "low" | "medium" | "high" | "critical",
+      "title": "Critical Anomaly Detected",
+      "description": "...",
+      "attribution": [
+        {
+          "factor": "Deviation",
+          "contribution": 0.4,
+          "description": "Significant deviation from baseline"
+        }
+      ],
+      "confidence": 0.9,
+      "timestamp": 1234567890000
+    }
+  ],
+  "healthScore": {
+    "overall": 0.75,
+    "volatility": 0.8,
+    "anomalyFrequency": 0.7,
+    "predictiveRisk": 0.75,
+    "dataConsistency": 0.8,
+    "trend": "improving" | "stable" | "declining"
+  },
+  "fingerprint": {
+    "sellerId": "uuid",
+    "fftSignature": [0.3, 0.5, 0.2],
+    "hfdPattern": 1.2,
+    "timingEntropy": 0.15,
+    "patternType": "normal" | "bot" | "manipulation" | "irregular",
+    "confidence": 0.85
+  },
+  "alerts": [
+    {
+      "type": "trend_acceleration" | "phase_misalignment" | "confidence_decay",
+      "severity": "low" | "medium" | "high",
+      "message": "...",
+      "predictedImpact": 25.5,
+      "timeToImpact": 3600000
+    }
+  ]
 }
 ```
 
@@ -104,21 +205,31 @@ Response:
   - `metrics_cache`: Probabilistic cache with adaptive TTL
 
 - **Edge Functions**: Serverless compute for DSP algorithms
-  - `event-ingestion`: Event processing and storage
+  - `event-ingestion`: Single event processing and storage
+  - `batch-ingestion`: High-throughput batch processing
   - `anomaly-detection`: DSP pipeline execution
-  - `predictions`: Time series forecasting
+  - `predictions`: Time series forecasting with confidence bands
+  - `insights-engine`: Auto-insights generation
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
 - **UI**: shadcn/ui + Tailwind CSS
-- **Charts**: Recharts
+- **Charts**: Recharts with custom tooltips and timestamp formatting
 - **Routing**: React Router v7
 - **State**: React Hooks + Context
+- **Theme**: next-themes for dark mode support
+- **Real-time**: Supabase Realtime subscriptions
 
 ### Caching Strategy
-- **Hot Sellers** (>100 events): 1 second TTL
-- **Cold Sellers** (<100 events): 10 second TTL
+- **Client-side**: 30-second in-memory cache for API responses
+- **Server-side**: Adaptive TTL (1s hot, 10s cold) in database
 - Automatic cache invalidation on new events
+
+### Real-time Updates
+- Supabase Realtime subscriptions for live event streaming
+- Toggle-able live mode in dashboard
+- Automatic data refresh on new events
+- Optimistic UI updates
 
 ## Technical Details
 
@@ -149,20 +260,66 @@ Bayesian combination:
 score = 0.4 × deviation + 0.3 × periodic + 0.3 × hfd
 ```
 
+### Auto-Insights Engine
+
+#### Anomaly Attribution
+Breaks down anomaly score into contributing factors:
+- Deviation from baseline (40% weight)
+- Periodic patterns (30% weight)
+- Complexity/HFD (30% weight)
+
+#### Seller Health Score
+Composite index calculation:
+```
+overall = 0.25 × volatility + 0.35 × anomalyFrequency + 
+          0.25 × predictiveRisk + 0.15 × dataConsistency
+```
+
+#### Behavior Fingerprinting
+Pattern detection using:
+- **FFT Signature**: Frequency domain characteristics
+- **HFD Pattern**: Fractal dimension for complexity
+- **Timing Entropy**: Regularity of event timing
+
+Classification:
+- **Bot**: HFD > 1.8 && entropy < 0.1
+- **Manipulation**: HFD > 1.6 && high FFT peaks
+- **Irregular**: High timing entropy
+- **Normal**: Standard human patterns
+
+#### Predictive Alerts
+- **Trend Acceleration**: |slope| > 5
+- **Phase Misalignment**: Periodic score 0.7-0.9
+- **Confidence Decay**: Prediction confidence < 0.6
+
 ### Performance Characteristics
 - **Sliding Window**: 512 data points per seller per metric
 - **Query Latency**: <100ms (cached), <500ms (computed)
-- **Throughput**: 1000+ events/second
+- **Throughput**: 1000+ events/second (batch mode)
 - **Storage**: Automatic cleanup of old events
+- **Cache Hit Rate**: ~80% with 30s TTL
+
+### Chart Improvements
+- **Timestamp Handling**: Numeric timestamps internally, formatted only in tooltips and ticks
+- **Multi-day Support**: Full date + time formatting (MMM dd, yyyy HH:mm)
+- **Confidence Bands**: ±σ bands around predictions showing uncertainty growth
+- **Visual Separation**: Reference line marking forecast start
+- **No Overlap**: Separate actual and predicted data series
 
 ## Color System
 
-The application uses a professional analytics color scheme:
+The application uses a professional analytics color scheme with dynamic CSS classes:
 - **Primary**: Blue (#3B82F6) - Main actions and highlights
 - **Success**: Green (#16A34A) - Normal metrics
 - **Warning**: Orange (#F59E0B) - Moderate anomalies
 - **Info**: Cyan (#0EA5E9) - Informational metrics
 - **Destructive**: Red (#EF4444) - Critical anomalies
+
+Dynamic alert classes:
+- `.alert-critical`, `.badge-critical`
+- `.alert-warning`, `.badge-warning`
+- `.alert-info`, `.badge-info`
+- `.alert-success`, `.badge-success`
 
 ## License
 

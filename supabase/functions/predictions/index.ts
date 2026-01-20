@@ -33,7 +33,7 @@ function generatePredictions(
   timestamps: number[],
   values: number[],
   steps = 10
-): Array<{ timestamp: number; predicted: number; confidence: number }> {
+): Array<{ timestamp: number; predicted: number; confidence: number; upperBound: number; lowerBound: number }> {
   if (values.length < 5) {
     return [];
   }
@@ -48,7 +48,14 @@ function generatePredictions(
     ? (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1)
     : 3600000;
 
-  const predictions: Array<{ timestamp: number; predicted: number; confidence: number }> = [];
+  const stdDev = Math.sqrt(
+    smoothed.reduce((sum, val, i) => {
+      const predicted = slope * i + intercept;
+      return sum + Math.pow(val - predicted, 2);
+    }, 0) / smoothed.length
+  );
+
+  const predictions: Array<{ timestamp: number; predicted: number; confidence: number; upperBound: number; lowerBound: number }> = [];
 
   for (let i = 1; i <= steps; i++) {
     const futureX = values.length + i;
@@ -56,11 +63,16 @@ function generatePredictions(
     const futureTimestamp = lastTimestamp + avgTimeDiff * i;
     
     const confidence = Math.max(0.5, 1 - (i / steps) * 0.5);
+    
+    const uncertaintyGrowth = 1 + (i / steps) * 2;
+    const margin = stdDev * uncertaintyGrowth * 1.96;
 
     predictions.push({
       timestamp: futureTimestamp,
       predicted: Math.max(0, predicted),
       confidence: Number(confidence.toFixed(2)),
+      upperBound: Math.max(0, predicted + margin),
+      lowerBound: Math.max(0, predicted - margin),
     });
   }
 
