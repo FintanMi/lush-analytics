@@ -1,4 +1,6 @@
-import SamplePage from './pages/SamplePage';
+import Dashboard from './pages/Dashboard';
+import EventIngestion from './pages/EventIngestion';
+import SellerManagement from './pages/SellerManagement';
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -10,9 +12,19 @@ interface RouteConfig {
 
 const routes: RouteConfig[] = [
   {
-    name: 'Sample Page',
+    name: 'Dashboard',
     path: '/',
-    element: <SamplePage />
+    element: <Dashboard />
+  },
+  {
+    name: 'Event Ingestion',
+    path: '/events',
+    element: <EventIngestion />
+  },
+  {
+    name: 'Seller Management',
+    path: '/sellers',
+    element: <SellerManagement />
   }
 ];
 
