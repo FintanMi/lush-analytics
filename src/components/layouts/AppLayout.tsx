@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Upload, Users, Menu, Activity, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, Upload, Users, Menu, Activity } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { ModeToggle } from '@/components/common/ModeToggle';
 
@@ -77,10 +76,8 @@ function SidebarNav() {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const [open, setOpen] = useState(true);
-
   return (
-    <SidebarProvider open={open} onOpenChange={setOpen}>
+    <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon" className="hidden lg:flex">
           <SidebarNav />
@@ -89,19 +86,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center gap-4 px-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(!open)}
-                className="hidden lg:flex"
-              >
-                {open ? (
-                  <PanelLeftClose className="h-5 w-5" />
-                ) : (
-                  <PanelLeft className="h-5 w-5" />
-                )}
-              </Button>
+              {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
+              <SidebarTrigger className="hidden lg:flex" />
 
+              {/* Mobile menu */}
               <div className="lg:hidden">
                 <Sheet>
                   <SheetTrigger asChild>

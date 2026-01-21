@@ -23,24 +23,61 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state";
+const SIDEBAR_COOKIE_NAME = "sidebar_state" as const;
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
-const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
-const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+const SIDEBAR_WIDTH = "16rem" as const;
+const SIDEBAR_WIDTH_MOBILE = "18rem" as const;
+const SIDEBAR_WIDTH_ICON = "3rem" as const;
+const SIDEBAR_KEYBOARD_SHORTCUT = "b" as const;
 
+// Template literal types for better type safety
+type SidebarState = "expanded" | "collapsed";
+type SidebarSide = "left" | "right";
+type SidebarVariant = "sidebar" | "floating" | "inset";
+type SidebarCollapsible = "offcanvas" | "icon" | "none";
+
+// Generic state setter type for better reusability
+type StateSetter<T> = React.Dispatch<React.SetStateAction<T>>;
+
+// Enhanced context props with better nullable handling
 type SidebarContextProps = {
-  state: "expanded" | "collapsed"
-  open: boolean
-  setOpen: (open: boolean) => void
-  openMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isMobile: boolean
-  toggleSidebar: () => void
-}
+  state: SidebarState;
+  open: boolean;
+  setOpen: StateSetter<boolean>;
+  openMobile: boolean;
+  setOpenMobile: StateSetter<boolean>;
+  isMobile: boolean;
+  toggleSidebar: () => void;
+};
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
+
+// Cookie utility functions for better encapsulation
+const cookieUtils = {
+  get: (name: string): string | null => {
+    if (typeof document === "undefined") return null;
+    
+    const cookie = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${name}=`));
+    
+    return cookie?.split("=")[1] ?? null;
+  },
+  
+  set: (name: string, value: string, maxAge: number): void => {
+    try {
+      document.cookie = `${name}=${value}; path=/; max-age=${maxAge}`;
+    } catch (error) {
+      // Silently fail in environments where cookies are not available
+      console.warn("Failed to set cookie:", error);
+    }
+  },
+  
+  getBoolean: (name: string, defaultValue: boolean): boolean => {
+    const value = cookieUtils.get(name);
+    return value === null ? defaultValue : value === "true";
+  },
+} as const;
 
 function useSidebar() {
   const context = React.useContext(SidebarContext);
@@ -51,6 +88,13 @@ function useSidebar() {
   return context;
 }
 
+// Generic provider props type for better reusability
+type ProviderProps<T extends React.ElementType> = React.ComponentProps<T> & {
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -59,43 +103,50 @@ function SidebarProvider({
   style,
   children,
   ...props
-}: React.ComponentProps<"div"> & {
-  defaultOpen?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}) {
+}: ProviderProps<"div">) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
-  const open = openProp ?? _open;
-  const setOpen = React.useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value;
-      if (setOpenProp) {
-        setOpenProp(openState);
-      } else {
-        _setOpen(openState);
-      }
+  // ✅ Read persisted sidebar state from cookie on mount
+  const [_open, _setOpen] = React.useState(() => {
+    if (typeof document === "undefined") return defaultOpen;
+    return cookieUtils.getBoolean(SIDEBAR_COOKIE_NAME, defaultOpen);
+  });
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+  const open = openProp ?? _open;
+
+  // ✅ Safe setter with functional update support and cookie persistence
+  const setOpen = React.useCallback<StateSetter<boolean>>(
+    (value) => {
+      _setOpen((prev) => {
+        const next = typeof value === "function" ? value(prev) : value;
+
+        // Notify parent component if controlled
+        setOpenProp?.(next);
+
+        // Persist to cookie
+        cookieUtils.set(SIDEBAR_COOKIE_NAME, String(next), SIDEBAR_COOKIE_MAX_AGE);
+
+        return next;
+      });
     },
-    [setOpenProp, open]
+    [setOpenProp]
   );
 
-  // Helper to toggle the sidebar.
+  // ✅ Unified toggle handler for desktop and mobile
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    if (isMobile) {
+      setOpenMobile((prev) => !prev);
+    } else {
+      setOpen((prev) => !prev);
+    }
+  }, [isMobile, setOpen]);
 
-  // Adds a keyboard shortcut to toggle the sidebar.
+  // Keyboard shortcut (⌘/Ctrl + B)
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
+        event.key.toLowerCase() === SIDEBAR_KEYBOARD_SHORTCUT &&
         (event.metaKey || event.ctrlKey)
       ) {
         event.preventDefault();
@@ -107,9 +158,7 @@ function SidebarProvider({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleSidebar]);
 
-  // We add a state so that we can do data-state="expanded" or "collapsed".
-  // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed";
+  const state: SidebarState = open ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
@@ -121,7 +170,7 @@ function SidebarProvider({
       setOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, toggleSidebar]
   );
 
   return (
@@ -149,6 +198,13 @@ function SidebarProvider({
   );
 }
 
+// Generic component props with better type constraints
+type SidebarProps = React.ComponentProps<"div"> & {
+  side?: SidebarSide;
+  variant?: SidebarVariant;
+  collapsible?: SidebarCollapsible;
+};
+
 function Sidebar({
   side = "left",
   variant = "sidebar",
@@ -156,11 +212,7 @@ function Sidebar({
   className,
   children,
   ...props
-}: React.ComponentProps<"div"> & {
-  side?: "left" | "right"
-  variant?: "sidebar" | "floating" | "inset"
-  collapsible?: "offcanvas" | "icon" | "none"
-}) {
+}: SidebarProps) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
@@ -391,11 +443,16 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+// Generic polymorphic component props with asChild pattern
+type PolymorphicProps<T extends React.ElementType> = React.ComponentProps<T> & {
+  asChild?: boolean;
+};
+
 function SidebarGroupLabel({
   className,
   asChild = false,
   ...props
-}: React.ComponentProps<"div"> & { asChild?: boolean }) {
+}: PolymorphicProps<"div">) {
   const Comp = asChild ? Slot : "div";
 
   return (
@@ -416,7 +473,7 @@ function SidebarGroupAction({
   className,
   asChild = false,
   ...props
-}: React.ComponentProps<"button"> & { asChild?: boolean }) {
+}: PolymorphicProps<"button">) {
   const Comp = asChild ? Slot : "button";
 
   return (
@@ -493,6 +550,15 @@ const sidebarMenuButtonVariants = cva(
   }
 );
 
+// Enhanced tooltip props with union types
+type TooltipConfig = string | React.ComponentProps<typeof TooltipContent>;
+
+// Menu button props with better type composition
+type SidebarMenuButtonProps = PolymorphicProps<"button"> & {
+  isActive?: boolean;
+  tooltip?: TooltipConfig;
+} & VariantProps<typeof sidebarMenuButtonVariants>;
+
 function SidebarMenuButton({
   asChild = false,
   isActive = false,
@@ -501,11 +567,7 @@ function SidebarMenuButton({
   tooltip,
   className,
   ...props
-}: React.ComponentProps<"button"> & {
-  asChild?: boolean
-  isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>
-} & VariantProps<typeof sidebarMenuButtonVariants>) {
+}: SidebarMenuButtonProps) {
   const Comp = asChild ? Slot : "button";
   const { isMobile, state } = useSidebar();
 
@@ -524,11 +586,9 @@ function SidebarMenuButton({
     return button;
   }
 
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    };
-  }
+  // Type coercion with proper type guard
+  const tooltipProps: React.ComponentProps<typeof TooltipContent> =
+    typeof tooltip === "string" ? { children: tooltip } : tooltip;
 
   return (
     <Tooltip>
@@ -537,21 +597,23 @@ function SidebarMenuButton({
         side="right"
         align="center"
         hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
+        {...tooltipProps}
       />
     </Tooltip>
   );
 }
+
+// Menu action props with better type composition
+type SidebarMenuActionProps = PolymorphicProps<"button"> & {
+  showOnHover?: boolean;
+};
 
 function SidebarMenuAction({
   className,
   asChild = false,
   showOnHover = false,
   ...props
-}: React.ComponentProps<"button"> & {
-  asChild?: boolean
-  showOnHover?: boolean
-}) {
+}: SidebarMenuActionProps) {
   const Comp = asChild ? Slot : "button";
 
   return (
@@ -597,14 +659,17 @@ function SidebarMenuBadge({
   );
 }
 
+// Skeleton props with better type composition
+type SidebarMenuSkeletonProps = React.ComponentProps<"div"> & {
+  showIcon?: boolean;
+};
+
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
   ...props
-}: React.ComponentProps<"div"> & {
-  showIcon?: boolean
-}) {
-  // Random width between 50 to 90%.
+}: SidebarMenuSkeletonProps) {
+  // Random width between 50 to 90% - memoized for performance
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
   }, []);
@@ -618,12 +683,12 @@ function SidebarMenuSkeleton({
     >
       {showIcon && (
         <Skeleton
-          className="size-4 rounded-md"
+          className="size-4 rounded-md bg-muted"
           data-sidebar="menu-skeleton-icon"
         />
       )}
       <Skeleton
-        className="h-4 max-w-(--skeleton-width) flex-1"
+        className="h-4 max-w-(--skeleton-width) flex-1 bg-muted"
         data-sidebar="menu-skeleton-text"
         style={
           {
@@ -664,17 +729,22 @@ function SidebarMenuSubItem({
   );
 }
 
+// Template literal type for size variants
+type SubButtonSize = "sm" | "md";
+
+// Sub button props with better type composition
+type SidebarMenuSubButtonProps = PolymorphicProps<"a"> & {
+  size?: SubButtonSize;
+  isActive?: boolean;
+};
+
 function SidebarMenuSubButton({
   asChild = false,
   size = "md",
   isActive = false,
   className,
   ...props
-}: React.ComponentProps<"a"> & {
-  asChild?: boolean
-  size?: "sm" | "md"
-  isActive?: boolean
-}) {
+}: SidebarMenuSubButtonProps) {
   const Comp = asChild ? Slot : "a";
 
   return (
