@@ -46,8 +46,8 @@ export default function EventIngestion() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-12 w-64 bg-muted" />
+      <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+        <Skeleton className="h-16 w-80 bg-muted" />
         <div className="grid gap-6 xl:grid-cols-2">
           <Skeleton className="h-96 bg-muted" />
           <Skeleton className="h-96 bg-muted" />
@@ -57,16 +57,16 @@ export default function EventIngestion() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Event Ingestion</h1>
-        <p className="text-muted-foreground">Submit events to the analytics system</p>
+    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight gradient-text">Event Ingestion</h1>
+        <p className="text-muted-foreground text-lg">Submit events to the analytics system</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <EventForm sellers={sellers} onSuccess={handleEventSuccess} />
 
-        <Card>
+        <Card className="card-modern">
           <CardHeader>
             <CardTitle>Recent Events</CardTitle>
             <CardDescription>Latest events submitted to the system</CardDescription>
@@ -77,7 +77,7 @@ export default function EventIngestion() {
                 No events yet. Submit your first event!
               </p>
             ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
                 {recentEvents.map((event) => (
                   <div
                     key={event.id}

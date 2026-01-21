@@ -32,31 +32,34 @@ function SidebarNav() {
 
   return (
     <>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary rounded-lg">
-            <Activity className="h-5 w-5 text-primary-foreground" />
+      <SidebarHeader className="border-b border-sidebar-border p-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-gradient-to-br from-primary to-chart-4 rounded-xl shadow-lg shadow-primary/20">
+            <Activity className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className="font-bold text-lg">Analytics API</h2>
+            <h2 className="font-bold text-lg tracking-tight">Analytics API</h2>
             <p className="text-xs text-muted-foreground">E-commerce Insights</p>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-2">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.path}
+                    className="rounded-lg transition-all duration-200"
                   >
                     <Link to={item.path}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <span className="font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -78,14 +81,14 @@ function SidebarNav() {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="icon" className="hidden lg:flex">
+      <div className="flex min-h-screen w-full gradient-bg">
+        <Sidebar collapsible="icon" className="hidden lg:flex border-r border-border">
           <SidebarNav />
         </Sidebar>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center gap-4 px-4">
+          <header className="sticky top-0 z-40 glass border-b border-border/50">
+            <div className="flex h-16 items-center gap-4 px-6">
               {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
               <SidebarTrigger className="hidden lg:flex" />
 
@@ -110,8 +113,10 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto bg-background">
-            {children}
+          <main className="flex-1 overflow-auto scrollbar-thin">
+            <div className="animate-fade-in">
+              {children}
+            </div>
           </main>
         </div>
       </div>

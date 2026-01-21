@@ -95,9 +95,9 @@ export default function SellerManagement() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-12 w-64 bg-muted" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+        <Skeleton className="h-16 w-80 bg-muted" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
             <Skeleton key={i} className="h-48 bg-muted" />
           ))}
@@ -107,15 +107,15 @@ export default function SellerManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Seller Management</h1>
-          <p className="text-muted-foreground">Manage sellers in the analytics system</p>
+    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight gradient-text">Seller Management</h1>
+          <p className="text-muted-foreground text-lg">Manage sellers in the analytics system</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Seller
             </Button>
@@ -164,23 +164,23 @@ export default function SellerManagement() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {sellers.map((seller) => (
-          <Card key={seller.id} className="hover:shadow-md transition-shadow">
+          <Card key={seller.id} className="card-modern group">
             <CardHeader>
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-primary/10 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-gradient-to-br from-primary/10 to-chart-4/10 rounded-xl group-hover:from-primary/20 group-hover:to-chart-4/20 transition-colors">
                     <Store className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">{seller.name}</CardTitle>
-                    <Badge variant="outline" className="mt-1">Active</Badge>
+                    <Badge variant="outline" className="mt-1.5 text-xs">Active</Badge>
                   </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {seller.email && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4" />
@@ -192,8 +192,8 @@ export default function SellerManagement() {
                 <span>Created {new Date(seller.created_at).toLocaleDateString()}</span>
               </div>
               <div className="pt-2">
-                <p className="text-xs text-muted-foreground">Seller ID</p>
-                <p className="text-xs font-mono bg-muted p-2 rounded mt-1 truncate">
+                <p className="text-xs text-muted-foreground mb-1.5">Seller ID</p>
+                <p className="text-xs font-mono bg-muted/50 p-2.5 rounded-lg truncate border border-border">
                   {seller.id}
                 </p>
               </div>
@@ -203,14 +203,16 @@ export default function SellerManagement() {
       </div>
 
       {sellers.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No sellers yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Get started by adding your first seller
+        <Card className="card-modern">
+          <CardContent className="py-16 text-center">
+            <div className="p-4 bg-gradient-to-br from-primary/10 to-chart-4/10 rounded-2xl w-fit mx-auto mb-6">
+              <Store className="h-12 w-12 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No sellers yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Get started by adding your first seller to begin tracking analytics
             </p>
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button onClick={() => setDialogOpen(true)} className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Seller
             </Button>

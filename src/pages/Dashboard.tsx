@@ -148,23 +148,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">Real-time seller analytics and anomaly detection</p>
+    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight gradient-text">Analytics Dashboard</h1>
+          <p className="text-muted-foreground text-lg">Real-time seller analytics and anomaly detection</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             onClick={() => setLiveUpdates(!liveUpdates)}
             variant={liveUpdates ? 'default' : 'outline'}
             size="sm"
+            className="shadow-sm"
           >
             <Radio className={`h-4 w-4 mr-2 ${liveUpdates ? 'animate-pulse' : ''}`} />
             {liveUpdates ? 'Live' : 'Paused'}
           </Button>
           <Select value={selectedSeller} onValueChange={setSelectedSeller}>
-            <SelectTrigger className="w-64">
+            <SelectTrigger className="w-64 shadow-sm">
               <SelectValue placeholder="Select a seller" />
             </SelectTrigger>
             <SelectContent>
@@ -180,6 +181,7 @@ export default function Dashboard() {
             disabled={refreshing || !selectedSeller}
             variant="outline"
             size="icon"
+            className="shadow-sm"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -187,10 +189,16 @@ export default function Dashboard() {
       </div>
 
       {anomalyData && (
-        <AnomalyAlert score={anomalyData.anomalyScore} metrics={anomalyData.metrics} />
+        <div className="animate-slide-up">
+          <AnomalyAlert score={anomalyData.anomalyScore} metrics={anomalyData.metrics} />
+        </div>
       )}
 
-      {alerts.length > 0 && <PredictiveAlerts alerts={alerts} />}
+      {alerts.length > 0 && (
+        <div className="animate-slide-up">
+          <PredictiveAlerts alerts={alerts} />
+        </div>
+      )}
 
       {anomalyData && anomalyData.metrics && (
         <DataSufficiencyBadge 
@@ -201,7 +209,7 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Sales"
           value={`$${metrics.totalSales}`}
@@ -272,7 +280,7 @@ export default function Dashboard() {
       </div>
 
       {predictionData && predictionData.predictions.length === 0 && (
-        <Card>
+        <Card className="card-modern">
           <CardHeader>
             <CardTitle>Predictions</CardTitle>
           </CardHeader>
