@@ -118,7 +118,7 @@
             scriptSrc: 'https://miaoda-resource-static.s3cdn.medo.dev/sentry/browser.sentry.min.js',
             sentryDsn: 'https://e3c07b90fcb5207f333d50ac24a99d3e@sentry.miaoda.cn/233',
             environment: 'undefined',
-            appId: 'app-92g0jei32801'
+            appId: 'app-93bl22y6mqyo'
           }
         )
       ]
