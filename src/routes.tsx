@@ -1,3 +1,4 @@
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import EventIngestion from './pages/EventIngestion';
 import SellerManagement from './pages/SellerManagement';
@@ -12,8 +13,13 @@ interface RouteConfig {
 
 const routes: RouteConfig[] = [
   {
-    name: 'Dashboard',
+    name: 'Home',
     path: '/',
+    element: <LandingPage />
+  },
+  {
+    name: 'Dashboard',
+    path: '/dashboard',
     element: <Dashboard />
   },
   {

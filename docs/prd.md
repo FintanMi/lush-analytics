@@ -1,12 +1,14 @@
-# E-commerce Seller Analytics API Requirements Document
+# Lush Analytics Requirements Document
 
 ## 1. Application Overview
 
 ### 1.1 Application Name
-E-commerce Seller Analytics API
+Lush Analytics
 
 ### 1.2 Application Description
 A lightweight, high-performance analytics API system designed for e-commerce sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture leveraging DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced with auto-insights engine, predictive alerts, seller health scoring, behavior fingerprinting capabilities, deterministic reproducibility, data sufficiency indicators, rate-limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, opinionated tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality indicators, and comprehensive encryption strategy.
+
+The application now includes a clean, modern frontend interface with hero section, features showcase, pricing tiers, testimonials, and email signup functionality, fully responsive for desktop and mobile devices.
 
 ## 2. Core Features
 
@@ -15,24 +17,27 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Functionality**: Accept and process seller event data in real-time
 - **Payload Structure**:
   - sellerId: Seller identifier (opaque/surrogate key only)
-  - timestamp: Event timestamp (milliseconds)\n  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
+  - timestamp: Event timestamp (milliseconds)
+  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
 - **Processing Logic**: Add events to preallocated fixed-size ring buffer (contiguous array), with separate buffers per seller per metric. Use index modulo window size for circular access. No per-event reallocation or object churn.
-- **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n\n### 2.2 Batch Ingestion
+- **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n
+### 2.2 Batch Ingestion
 - **Endpoint**: POST /events/batch
 - **Functionality**: Accept bulk event data for high-throughput sellers
-- **Payload Structure**: Array of event objects (PII-stripped)\n- **Processing Logic**: Efficiently process multiple events in a single request to reduce overhead, using same ring buffer mechanism\n\n### 2.3 Ring Buffer Management
+- **Payload Structure**: Array of event objects (PII-stripped)
+- **Processing Logic**: Efficiently process multiple events in a single request to reduce overhead, using same ring buffer mechanism\n\n### 2.3 Ring Buffer Management
 - Preallocated fixed-size contiguous array (window size defined in centralized config)
 - Index modulo window size for circular access\n- Zero reallocation per event\n- No per-event object churn
 - Support for real-time FIR, FFT, and HFD computations
-- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI\n
+- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI
+
 ### 2.4 DSP Analytics Pipeline
 - **FIR Smoothing**: Smooth time series data\n- **FFT Analysis**: Detect periodic spikes in sales/clicks, identify recurring bot patterns or hourly spikes
 - **HFD (Higuchi Fractal Dimension)**: Measure time series complexity/irregularity, high HFD values indicate possible bot activity or anomalous behavior
 - **Bayesian/Probabilistic Scoring**: Combine smoothed deviation, FFT spikes, and HFD to output anomaly score (0-1 range)
 - **Deterministic Anomaly Reproducibility**: Ensure same inputs always produce same outputs by fixing random seeds, deterministic sorting, and consistent computation order
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-
-### 2.5 Probabilistic Caching with Temporal Locality
+\n### 2.5 Probabilistic Caching with Temporal Locality
 - Per-seller hot metric caching\n- **lastComputedAt** timestamp tracking for each cached metric
 - Probabilistic refresh only when queried (not on every event)
 - Adaptive TTL strategy defined in centralized config:\n  - Hot sellers: recompute based on config TTL
@@ -49,14 +54,14 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - reproducibilityHash: Hash value for deterministic verification
   - confidenceMessage: Confidence and sufficiency aware messaging explaining result reliability
   - configVersion: Configuration version used for this computation
-  - signalQuality: Signal quality assessment (degenerate patterns, edge case flags)
-\n### 2.7 Prediction API
+  - signalQuality: Signal quality assessment (degenerate patterns, edge case flags)\n\n### 2.7 Prediction API
 - **Endpoint**: GET /metrics/:seller/predictions
 - **Functionality**: Return predicted sales/traffic time series data with confidence bands
 - **Response Format**:\n  - predictions: Array of predicted values with timestamps
   - confidenceBands: ± confidence intervals around predictions
   - historicalCutoff: Timestamp marking where history ends and prediction begins
-  - timeWindow: Clear time-window definition\n  - dataSufficiency: Data sufficiency indicator
+  - timeWindow: Clear time-window definition
+  - dataSufficiency: Data sufficiency indicator
   - reproducibilityHash: Hash value for deterministic verification
   - confidenceMessage: Confidence and sufficiency aware messaging explaining prediction reliability
   - configVersion: Configuration version used for this computation
@@ -77,7 +82,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Superseded: Insight replaced by newer, more accurate insight
 - **State Transitions**: Automatic state management based on time, data updates, and user feedback
 - **Endpoint**: GET /insights/:seller/lifecycle to query insight states
-\n### 2.9 Anomaly Attribution (Root Cause Breakdown)
+
+### 2.9 Anomaly Attribution (Root Cause Breakdown)
 - **Functionality**: Explain anomaly score composition\n- **Components**:
   - FFT spike contribution percentage
   - HFD complexity contribution percentage
@@ -90,7 +96,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Alert Levels**: Defined by config tables (data-driven), not conditionals
 - **Alert Types**: Potential spike warning, declining trend alert, pattern shift notification
 - **System Invariant**: All alerts must reference data sufficiency status
-\n### 2.11 Seller Health Score (Composite Index)
+
+### 2.11 Seller Health Score (Composite Index)
 - **Endpoint**: GET /metrics/:seller/health
 - **Functionality**: Calculate comprehensive seller health score\n- **Scoring Factors**:
   - Volatility level
@@ -112,13 +119,15 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 
 ### 2.13 Smart Sampling & Adaptive Resolution
 - **Functionality**: Automatically adjust analytics computation cost based on seller activity
-- **Adaptive Logic** (defined in centralized config):\n  - High-activity sellers: Full resolution analysis
+- **Adaptive Logic** (defined in centralized config):
+  - High-activity sellers: Full resolution analysis
   - Medium-activity sellers: Moderate sampling
   - Low-activity sellers: Reduced sampling frequency
 - **Benefit**: Optimize system resources while maintaining accuracy
 
 ### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration\n- **Functionality**: Live dashboard updates with AnomalyAlert component
+- **Technology**: Supabase Realtime integration
+- **Functionality**: Live dashboard updates with AnomalyAlert component
 - **Features**:
   - Real-time anomaly notifications
   - Live metric updates
@@ -163,9 +172,10 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Functionality**: Dynamic pricing tier system based on alert frequency and severity
 - **Tier Structure**: Data-driven tier definitions (not logic-based)
 - **Opinionated Defaults Per Tier**:
-  - Basic Tier: Standard features, default alert thresholds, basic insights, light branding watermark on embeddables
-  - Premium Tier: Enhanced features, lower alert thresholds, detailed insights, faster response, reduced branding on embeddables
-  - Enterprise Tier: Full feature access, custom alert thresholds, comprehensive insights, dedicated support, no branding on embeddables
+  - Free Tier: Standard features, default alert thresholds, basic insights, light branding watermark on embeddables
+  - Basic Tier (€50): Enhanced features, lower alert thresholds, detailed insights, faster response, reduced branding on embeddables
+  - Premium Tier (€300): Advanced features, custom alert thresholds, comprehensive insights, priority support, minimal branding on embeddables
+  - Business Tier (€1200): Full feature access, fully custom alert thresholds, enterprise-grade insights, dedicated support, no branding on embeddables
 - **Pricing Factors** (defined in centralized config):\n  - Number of alerts triggered per month
   - Anomaly severity levels
   - Prediction accuracy requirements
@@ -181,8 +191,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time-window definition
   - dataSufficiency: Data sufficiency indicator\n  - reproducibilityHash: Hash value for verification
-  - confidenceMessage: Confidence and sufficiency aware messaging\n  - configVersion: Configuration version used
-  - signalQuality: Signal quality assessment
+  - confidenceMessage: Confidence and sufficiency aware messaging\n  - configVersion: Configuration version used\n  - signalQuality: Signal quality assessment
 
 ### 2.20 Dedicated Prediction Endpoint
 - **Endpoint**: POST /sell/prediction
@@ -224,7 +233,8 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Rate-limit per embed key (defined in centralized config per tier)
   - Light branding watermark for free/basic tiers
   - Read-only scopes by default (no write access unless explicitly granted)
-  - Embed key authentication required\n
+  - Embed key authentication required
+
 ### 2.23 Auditable Configuration Management
 - **Functionality**: Track and audit all configuration changes\n- **Features**:
   - Version control for config tables
@@ -254,20 +264,41 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Timestamp drift: Identify clock synchronization issues
   - Ingestion bursts: Detect unusual data ingestion patterns
 - **Treatment**: Flag system health issues without polluting seller analytics
-- **Output**: Separate system health metrics and alerts
-- **Endpoint**: GET /system/health to query systemic anomaly status
+- **Output**: Separate system health metrics and alerts\n- **Endpoint**: GET /system/health to query systemic anomaly status
 - **Dashboard Integration**: System health panel separate from seller analytics
 
-## 3. Technical Architecture
+### 2.26 Frontend Landing Page
+- **Functionality**: Clean, modern landing page showcasing Lush Analytics platform
+- **Sections**:
+  - **Hero Section**: \n    - Heading: Main value proposition
+    - Subheading: Supporting description
+    - Call to Action Button: Opens dialog for user interaction
+  - **Features Section**: 
+    - Four feature cards with icons
+    - Highlight key platform capabilities
+  - **Pricing Section**: 
+    - Four pricing tiers with clear differentiation:\n      - Free Tier: €0\n      - Basic Tier: €50
+      - Premium Tier: €300
+      - Business Tier: €1200
+    - Display pricing in Euro symbol (€)
+  - **Testimonials Section**: 
+    - Customer testimonials and success stories
+  - **Email Sign Up Form**: 
+    - Newsletter subscription or early access registration
+- **Responsive Design**: Fully responsive layout optimized for desktop and mobile devices
+- **Styling**: Consistent with existing application styling and design system
+\n## 3. Technical Architecture
 
 ### 3.1 Data Processing\n- Preallocated fixed-size contiguous ring buffer for real-time data storage
-- Index modulo window size for circular access\n- Zero reallocation per event, no per-event object churn\n- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
+- Index modulo window size for circular access\n- Zero reallocation per event, no per-event object churn
+- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
 - Batch processing support for high-throughput scenarios
 - Deterministic computation pipeline with fixed random seeds and consistent ordering
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
 
 ### 3.2 Caching Strategy with Temporal Locality
-- Probabilistic caching mechanism\n- **lastComputedAt** timestamp tracking\n- Probabilistic refresh only when queried\n- Dynamic TTL adjustment (defined in centralized config)
+- Probabilistic caching mechanism\n- **lastComputedAt** timestamp tracking\n- Probabilistic refresh only when queried
+- Dynamic TTL adjustment (defined in centralized config)
 - Hot/cold data differentiation
 - Short-term caching layer for frequently accessed computations
 \n### 3.3 API Design
@@ -280,8 +311,7 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - One-click export endpoints
 - Auditable configuration endpoints
 - System health endpoints
-
-### 3.4 Dashboard Components
+\n### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
 - Time-series chart with proper timestamp handling:\n  - Numeric timestamps internally
   - Formatted display in tooltips and axis ticks
@@ -308,13 +338,15 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Report delivery system (email, notification, API)\n- Pricing tier API endpoints
 - One-click export functionality integration
 - Config snapshot storage with each report
-\n### 3.7 Deterministic Reproducibility System
+
+### 3.7 Deterministic Reproducibility System
 - Fixed random seed management
 - Deterministic sorting and computation order
 - Reproducibility hash generation for verification
 - Input/output logging for audit trails
 - **System Invariant**: Determinism guarantee - same inputs always produce same outputs
-\n### 3.8 Centralized Configuration System
+
+### 3.8 Centralized Configuration System
 - **Centralized Config Store**: Single source of truth for all system parameters
 - **Config Parameters**:
   - Window sizes (ring buffer size, analysis window size)
@@ -340,16 +372,16 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - **Hard Invariant**: No names, emails, addresses in analytics paths
 - **Seller IDs**: Always opaque/surrogate keys, never direct identifiers
 - **Event Payloads**: Stripped to behavioral signals only, no PII
-- **Aggregation-First**: All analytics operate on aggregated data
-- **Data Minimization Enforcement**: Automated checks to prevent PII leakage
+- **Aggregation-First**: All analytics operate on aggregated data\n- **Data Minimization Enforcement**: Automated checks to prevent PII leakage
 \n### 3.11 Retention Policy System
 - **Tier-Based Retention**: Retention periods defined per pricing tier in centralized config
 - **Explicit Expiry Windows**: Clear expiry timestamps for all data
 - **Automatic Decay**: Automated data deletion based on retention policies
 - **Retention Tiers**:
-  - Basic Tier: 30-day retention
+  - Free Tier: 30-day retention
+  - Basic Tier: 60-day retention
   - Premium Tier: 90-day retention
-  - Enterprise Tier: 365-day retention (customizable)
+  - Business Tier: 365-day retention (customizable)
 - **Policy Enforcement**: Retention as policy, not configuration - enforced at system level
 \n### 3.12 System Invariants (Codified)
 - **Determinism Guarantee**: Same inputs always produce same outputs
@@ -378,6 +410,14 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
   - Scores: Not encrypted (aggregated, non-sensitive)
 - **Key Rotation**: Automated key rotation policies defined in centralized config
 - **Access Control**: Role-based access control for encrypted data
+
+### 3.14 Frontend Architecture
+- **Technology Stack**: React + Tailwind CSS + Shadcn\n- **Component Structure**: Modular, reusable components
+- **Responsive Design**: Mobile-first approach with breakpoints for desktop
+- **Dialog Component**: HTML dialog element for call-to-action interactions
+- **Styling Consistency**: Maintain existing application design system and styling patterns
+- **Accessibility**: WCAG compliant, keyboard navigation support
+- **Performance**: Optimized loading, lazy loading for images and components
 
 ## 4. System Characteristics
 - Lightweight and elegant design
@@ -410,10 +450,12 @@ A lightweight, high-performance analytics API system designed for e-commerce sel
 - Edge case detection as signal quality indicators
 - Systemic anomaly detection separate from seller analytics
 - Comprehensive encryption strategy (at rest, in transit, secrets & keys)
-\n## 5. System Constitution
+- Modern, responsive frontend with clean design and intuitive user experience
+
+## 5. System Constitution
 
 ### 5.1 Purpose and Scope
-This System Constitution defines the foundational principles, invariants, and governance rules that govern the E-commerce Seller Analytics API. It serves as the authoritative reference for all system design, implementation, and operational decisions. All system components, modules, and behaviors must conform to the principles and invariants articulated herein.
+This System Constitution defines the foundational principles, invariants, and governance rules that govern the Lush Analytics platform. It serves as the authoritative reference for all system design, implementation, and operational decisions. All system components, modules, and behaviors must conform to the principles and invariants articulated herein.
 
 ### 5.2 Core Principles
 
@@ -456,7 +498,7 @@ All changes to the System Constitution require formal review and approval. Confi
 
 ### 6.1 Our Commitment to Trust and Security
 
-The E-commerce Seller Analytics API is built on a foundation of trust, transparency, and security. We recognize that our users entrust us with sensitive behavioral data, and we take this responsibility seriously. This Public Trust & Security Statement articulates our commitments and the measures we have implemented to protect user data and maintain system integrity.
+Lush Analytics is built on a foundation of trust, transparency, and security. We recognize that our users entrust us with sensitive behavioral data, and we take this responsibility seriously. This Public Trust & Security Statement articulates our commitments and the measures we have implemented to protect user data and maintain system integrity.
 
 ### 6.2 Data Privacy and Minimization
 
@@ -488,7 +530,7 @@ We maintain a formal security incident response plan. In the event of a security
 We are committed to compliance with relevant data protection regulations, including GDPR and CCPA. We continuously monitor regulatory developments and adapt our practices accordingly.\n
 ### 6.9 Contact and Accountability
 
-For security concerns, questions, or incident reports, users may contact our security team at security@example.com. We are accountable to our users and committed to maintaining their trust.\n
+For security concerns, questions, or incident reports, users may contact our security team at security@lushanalytics.com. We are accountable to our users and committed to maintaining their trust.\n
 ## 7. Signal Semantics Glossary
 
 This glossary defines the precise meanings of key terms used throughout the system. These definitions are authoritative and must be consistently applied across all system components, documentation, and user-facing interfaces.
@@ -577,7 +619,3 @@ This glossary defines the precise meanings of key terms used throughout the syst
 **Separation**: Systemic anomalies are flagged separately from seller analytics, ensuring clarity and preventing false positives in seller-facing outputs.
 
 **Monitoring**: Systemic anomalies are monitored via dedicated system health endpoints and dashboard panels.
-
----
-
-This glossary provides precise, authoritative definitions for key system terms. Consistent use of these definitions across all system components, documentation, and user-facing interfaces is mandatory.
