@@ -268,7 +268,8 @@ All colors MUST be HSL.
 
   /* CSS-only Accordion for Pricing */
   .pricing-accordion-item {
-    @apply bg-card border border-border rounded-xl overflow-hidden transition-all duration-300;
+    @apply bg-card border border-border rounded-xl overflow-hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .pricing-accordion-input {
@@ -276,26 +277,42 @@ All colors MUST be HSL.
   }
 
   .pricing-accordion-label {
-    @apply block p-6 cursor-pointer transition-all duration-300 hover:bg-accent/50;
+    @apply block p-6 cursor-pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .pricing-accordion-label:hover {
+    @apply bg-accent/50;
   }
 
   .pricing-accordion-content {
-    @apply max-h-0 overflow-hidden transition-all duration-500 ease-in-out bg-muted/30;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    @apply bg-muted/30;
+    transition: max-height 0.6s cubic-bezier(0.65, 0, 0.35, 1),
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s,
+                padding 0.6s cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   .pricing-accordion-input:checked ~ .pricing-accordion-content {
-    @apply max-h-[1000px];
+    max-height: 1000px;
+    opacity: 1;
   }
 
   .pricing-accordion-icon {
-    @apply transition-transform duration-300;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .pricing-accordion-input:checked ~ .pricing-accordion-label .pricing-accordion-icon {
-    @apply rotate-180;
+    transform: rotate(180deg);
   }
 
   .pricing-accordion-input:checked ~ .pricing-accordion-label {
     @apply bg-accent/30;
+  }
+
+  .pricing-accordion-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 }

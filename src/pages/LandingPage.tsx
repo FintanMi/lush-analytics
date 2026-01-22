@@ -368,24 +368,24 @@ export default function LandingPage() {
                     tier.highlighted ? 'ring-2 ring-primary' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
                       {tier.highlighted && (
-                        <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1">
+                        <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1 w-fit">
                           Most Popular
                         </Badge>
                       )}
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-xl font-bold">{tier.name}</h3>
-                        <p className="text-sm text-muted-foreground">{tier.description}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                      <div className="text-left sm:text-right">
                         <span className="text-3xl font-bold">€{tier.price}</span>
                         <span className="text-muted-foreground text-sm">/{tier.period}</span>
                       </div>
-                      <div className="pricing-accordion-icon">
+                      <div className="pricing-accordion-icon shrink-0">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -395,7 +395,7 @@ export default function LandingPage() {
                 </label>
                 <div className="pricing-accordion-content">
                   <div className="p-6 space-y-6">
-                    <ul className="grid md:grid-cols-2 gap-3">
+                    <ul className="grid sm:grid-cols-2 gap-3">
                       {tier.features.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-start gap-2">
                           <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
