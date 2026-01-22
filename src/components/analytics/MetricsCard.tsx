@@ -9,7 +9,7 @@ interface MetricsCardProps {
   change?: number;
   icon: LucideIcon;
   description?: string;
-  status?: 'normal' | 'warning' | 'critical' | 'info';
+  status?: 'normal' | 'warning' | 'critical' | 'info' | 'success';
 }
 
 export function MetricsCard({
@@ -25,6 +25,7 @@ export function MetricsCard({
     warning: 'bg-warning/10 text-warning border-warning/20',
     critical: 'bg-destructive/10 text-destructive border-destructive/20',
     info: 'bg-info/10 text-info border-info/20',
+    success: 'bg-success/10 text-success border-success/20',
   };
 
   const changeColor = change && change > 0 ? 'text-success' : change && change < 0 ? 'text-destructive' : 'text-muted-foreground';

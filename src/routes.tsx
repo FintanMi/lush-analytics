@@ -2,6 +2,7 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import EventIngestion from './pages/EventIngestion';
 import SellerManagement from './pages/SellerManagement';
+import PaymentSuccess from './pages/PaymentSuccess';
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -31,6 +32,12 @@ const routes: RouteConfig[] = [
     name: 'Seller Management',
     path: '/sellers',
     element: <SellerManagement />
+  },
+  {
+    name: 'Payment Success',
+    path: '/payment-success',
+    element: <PaymentSuccess />,
+    visible: false
   }
 ];
 

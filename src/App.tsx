@@ -10,11 +10,13 @@ import { Toaster } from '@/components/ui/toaster';
 function AppContent() {
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
+  const isPaymentSuccess = location.pathname === '/payment-success';
+  const showWithoutLayout = isLandingPage || isPaymentSuccess;
 
   return (
     <>
       <IntersectObserver />
-      {isLandingPage ? (
+      {showWithoutLayout ? (
         <Routes>
           {routes.map((route, index) => (
             <Route

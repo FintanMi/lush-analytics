@@ -14,23 +14,24 @@ import {
   Mail
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { supabase } from '@/lib/supabase';
 
 const features = [
   {
     icon: TrendingUp,
     title: 'Real-Time Analytics',
-    description: 'Monitor your e-commerce metrics in real-time with live updates and instant insights into sales, clicks, and views.'
+    description: 'Monitor your business metrics in real-time with live updates and instant insights into sales, clicks, and views.'
   },
   {
     icon: Shield,
     title: 'Anomaly Detection',
-    description: 'Advanced AI-powered anomaly detection identifies unusual patterns and potential fraud before they impact your business.'
+    description: 'Advanced mathematical models identify unusual patterns and potential fraud before they impact your business.'
   },
   {
     icon: Zap,
     title: 'Predictive Insights',
-    description: 'Leverage machine learning to forecast trends, predict sales, and make data-driven decisions with confidence.'
+    description: 'Leverage advanced mathematical models to forecast trends, predict sales, and make data-driven decisions with confidence.'
   },
   {
     icon: BarChart3,
@@ -43,6 +44,7 @@ const pricingTiers = [
   {
     name: 'Free',
     price: '0',
+    priceValue: 0,
     period: 'forever',
     description: 'Perfect for getting started',
     features: [
@@ -57,6 +59,7 @@ const pricingTiers = [
   {
     name: 'Basic',
     price: '50',
+    priceValue: 50,
     period: 'month',
     description: 'For growing businesses',
     features: [
@@ -73,6 +76,7 @@ const pricingTiers = [
   {
     name: 'Premium',
     price: '300',
+    priceValue: 300,
     period: 'month',
     description: 'For established companies',
     features: [
@@ -91,6 +95,7 @@ const pricingTiers = [
   {
     name: 'Business',
     price: '1200',
+    priceValue: 1200,
     period: 'month',
     description: 'For enterprise scale',
     features: [
@@ -100,7 +105,7 @@ const pricingTiers = [
       'Dedicated account manager',
       'Unlimited seller accounts',
       'Real-time anomaly detection',
-      'Advanced ML predictions',
+      'Advanced mathematical predictions',
       'Custom integrations',
       'White-label options',
       'SLA guarantee'
@@ -133,8 +138,61 @@ const testimonials = [
 export default function LandingPage() {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleCheckout = async (tier: typeof pricingTiers[0]) => {
+    if (tier.priceValue === 0) {
+      // Free tier - just redirect to dashboard
+      navigate('/dashboard');
+      return;
+    }
+
+    setProcessingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create_stripe_checkout', {
+        body: {
+          items: [
+            {
+              name: `Lush Analytics - ${tier.name} Plan`,
+              price: tier.priceValue,
+              quantity: 1,
+            }
+          ],
+          currency: 'eur',
+          payment_method_types: ['card'],
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.code === 'SUCCESS' && data?.data?.url) {
+        // Open Stripe checkout in new tab
+        window.open(data.data.url, '_blank');
+        toast({
+          title: 'Redirecting to Payment',
+          description: 'Opening Stripe checkout in a new tab...',
+          duration: 5000,
+        });
+      } else {
+        throw new Error('Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Payment Failed',
+        description: error instanceof Error ? error.message : 'Failed to initiate payment. Please try again.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
 
   const openDialog = () => {
     dialogRef.current?.showModal();
@@ -153,14 +211,21 @@ export default function LandingPage() {
 
     toast({
       title: 'Success!',
-      description: 'Thank you for signing up. We\'ll be in touch soon.',
+      description: 'Thank you for signing up. Redirecting to dashboard...',
+      duration: 5000,
     });
 
     setEmail('');
     setIsSubmitting(false);
+    closeDialog();
+
+    // Redirect to dashboard after signup
+    setTimeout(() => {
+      navigate('/dashboard');
+    }, 1000);
   };
 
-  // Close dialog on escape key
+  // Close dialog on escape key or backdrop click
   useEffect(() => {
     const dialog = dialogRef.current;
     const handleCancel = (e: Event) => {
@@ -168,8 +233,24 @@ export default function LandingPage() {
       closeDialog();
     };
 
+    const handleBackdropClick = (e: MouseEvent) => {
+      const rect = dialog?.getBoundingClientRect();
+      if (rect && (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      )) {
+        closeDialog();
+      }
+    };
+
     dialog?.addEventListener('cancel', handleCancel);
-    return () => dialog?.removeEventListener('cancel', handleCancel);
+    dialog?.addEventListener('click', handleBackdropClick);
+    return () => {
+      dialog?.removeEventListener('cancel', handleCancel);
+      dialog?.removeEventListener('click', handleBackdropClick);
+    };
   }, []);
 
   return (
@@ -185,7 +266,7 @@ export default function LandingPage() {
               <span className="gradient-text">Lush Analytics</span>
             </h1>
             <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Transform your e-commerce data into actionable insights with real-time analytics, 
+              Transform your data into actionable insights with real-time analytics, 
               anomaly detection, and predictive intelligence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
@@ -295,9 +376,10 @@ export default function LandingPage() {
                   <Button 
                     className="w-full mt-6"
                     variant={tier.highlighted ? 'default' : 'outline'}
-                    onClick={openDialog}
+                    onClick={() => handleCheckout(tier)}
+                    disabled={processingPayment}
                   >
-                    Get Started
+                    {processingPayment ? 'Processing...' : tier.priceValue === 0 ? 'Get Started' : 'Subscribe Now'}
                   </Button>
                 </CardContent>
               </Card>

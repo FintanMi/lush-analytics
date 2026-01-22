@@ -4,11 +4,12 @@
 
 ### 1.1 Application Name
 Lush Analytics
-
-### 1.2 Application Description
-A lightweight, high-performance analytics API system designed for e-commerce sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture leveraging DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced with auto-insights engine, predictive alerts, seller health scoring, behavior fingerprinting capabilities, deterministic reproducibility, data sufficiency indicators, rate-limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, opinionated tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality indicators, and comprehensive encryption strategy.
+\n### 1.2 Application Description
+A lightweight, high-performance analytics API system designed for sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture leveraging DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced with auto-insights engine, predictive alerts, seller health scoring, behavior fingerprinting capabilities, deterministic reproducibility, data sufficiency indicators, rate-limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, opinionated tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality indicators, and comprehensive encryption strategy.
 
 The application now includes a clean, modern frontend interface with hero section, features showcase, pricing tiers, testimonials, and email signup functionality, fully responsive for desktop and mobile devices.
+
+**New Feature**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, and Stripe payment integration.
 
 ## 2. Core Features
 
@@ -18,7 +19,7 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Payload Structure**:
   - sellerId: Seller identifier (opaque/surrogate key only)
   - timestamp: Event timestamp (milliseconds)
-  - type: Event type (SALE / CLICK / VIEW)\n  - value: Event value (behavioral signal only, no PII)
+  - type: Event type (SALE / CLICK / VIEW / CHECKOUT_STARTED / PAYMENT_SUCCEEDED)\n  - value: Event value (behavioral signal only, no PII)
 - **Processing Logic**: Add events to preallocated fixed-size ring buffer (contiguous array), with separate buffers per seller per metric. Use index modulo window size for circular access. No per-event reallocation or object churn.
 - **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n
 ### 2.2 Batch Ingestion
@@ -29,8 +30,7 @@ The application now includes a clean, modern frontend interface with hero sectio
 - Preallocated fixed-size contiguous array (window size defined in centralized config)
 - Index modulo window size for circular access\n- Zero reallocation per event\n- No per-event object churn
 - Support for real-time FIR, FFT, and HFD computations
-- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI
-
+- **Clear Time-Window Definitions**: Expose time-window parameters (start timestamp, end timestamp, window size) in API responses and UI\n
 ### 2.4 DSP Analytics Pipeline
 - **FIR Smoothing**: Smooth time series data\n- **FFT Analysis**: Detect periodic spikes in sales/clicks, identify recurring bot patterns or hourly spikes
 - **HFD (Higuchi Fractal Dimension)**: Measure time series complexity/irregularity, high HFD values indicate possible bot activity or anomalous behavior
@@ -38,7 +38,8 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Deterministic Anomaly Reproducibility**: Ensure same inputs always produce same outputs by fixing random seeds, deterministic sorting, and consistent computation order
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
 \n### 2.5 Probabilistic Caching with Temporal Locality
-- Per-seller hot metric caching\n- **lastComputedAt** timestamp tracking for each cached metric
+- Per-seller hot metric caching
+- **lastComputedAt** timestamp tracking for each cached metric
 - Probabilistic refresh only when queried (not on every event)
 - Adaptive TTL strategy defined in centralized config:\n  - Hot sellers: recompute based on config TTL
   - Cold sellers: recompute based on config TTL
@@ -135,14 +136,14 @@ The application now includes a clean, modern frontend interface with hero sectio
   - **Time-Window Display**: Show clear time-window definitions in UI (start time, end time, window size)
   - **Data Sufficiency Indicators**: Display explicit data sufficiency status (sufficient/insufficient, progress bar showing current vs required data points)
   - **Rate-Limit & Backpressure Visibility**: Show current rate-limit status, remaining quota, backpressure indicators, and queue depth
-  - **Confidence & Sufficiency Aware Messaging**: Display contextual messages explaining result reliability based on data quality
-  - **Insight Lifecycle Display**: Show insight states (Generated, Confirmed, Expired, Superseded) with visual indicators
+  - **Confidence & Sufficiency Aware Messaging**: Display contextual messages explaining result reliability based on data quality\n  - **Insight Lifecycle Display**: Show insight states (Generated, Confirmed, Expired, Superseded) with visual indicators
   - **Signal Quality Indicators**: Display edge case flags and degenerate pattern warnings
+  - **Task Completion Progress**: Display overall task completion percentage for current user's assigned tasks
+  - **Assigned Tasks Overview**: Show list of tasks assigned to current user with status indicators
 \n### 2.15 Event Log Management
 - **Functionality**: Display and manage event logs on dashboard
 - **Features**:
-  - Pagination support
-  - Infinite scrolling capability
+  - Pagination support\n  - Infinite scrolling capability
   - Efficient data loading for large event volumes
 - **Data Minimization**: Display only aggregated behavioral signals, no PII
 \n### 2.16 Decision Hooks
@@ -172,10 +173,10 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Functionality**: Dynamic pricing tier system based on alert frequency and severity
 - **Tier Structure**: Data-driven tier definitions (not logic-based)
 - **Opinionated Defaults Per Tier**:
-  - Free Tier: Standard features, default alert thresholds, basic insights, light branding watermark on embeddables
-  - Basic Tier (€50): Enhanced features, lower alert thresholds, detailed insights, faster response, reduced branding on embeddables
-  - Premium Tier (€300): Advanced features, custom alert thresholds, comprehensive insights, priority support, minimal branding on embeddables
-  - Business Tier (€1200): Full feature access, fully custom alert thresholds, enterprise-grade insights, dedicated support, no branding on embeddables
+  - Free Tier: €0 - Standard features, default alert thresholds, basic insights, light branding watermark on embeddables
+  - Basic Tier: €50 - Enhanced features, lower alert thresholds, detailed insights, faster response, reduced branding on embeddables
+  - Premium Tier: €300 - Advanced features, custom alert thresholds, comprehensive insights, priority support, minimal branding on embeddables
+  - Business Tier: €1200 - Full feature access, fully custom alert thresholds, enterprise-grade insights, dedicated support, no branding on embeddables
 - **Pricing Factors** (defined in centralized config):\n  - Number of alerts triggered per month
   - Anomaly severity levels
   - Prediction accuracy requirements
@@ -253,8 +254,7 @@ The application now includes a clean, modern frontend interface with hero sectio
   - Constant zero values: Flag as low-signal regime
   - Perfect periodicity: Flag as potential bot activity signal
   - Impossible regularity: Flag as anomalous signal pattern
-- **Treatment**: Edge cases are signals, not bugs. They indicate low-confidence regimes and should be surfaced as signal quality indicators
-- **Output**: Signal quality score and edge case flags included in all analytics responses
+- **Treatment**: Edge cases are signals, not bugs. They indicate low-confidence regimes and should be surfaced as signal quality indicators\n- **Output**: Signal quality score and edge case flags included in all analytics responses
 - **Integration**: Signal quality indicators displayed in dashboard and included in API responses
 
 ### 2.25 Systemic Anomaly Detection
@@ -276,18 +276,147 @@ The application now includes a clean, modern frontend interface with hero sectio
   - **Features Section**: 
     - Four feature cards with icons
     - Highlight key platform capabilities
+    - **Anomaly Detection Box**: Reference to advanced mathematical models (no mention of AI or machine learning)
+    - **Predictive Insights Box**: Reference to advanced mathematical models (no mention of AI or machine learning)
   - **Pricing Section**: 
     - Four pricing tiers with clear differentiation:\n      - Free Tier: €0\n      - Basic Tier: €50
       - Premium Tier: €300
       - Business Tier: €1200
     - Display pricing in Euro symbol (€)
-  - **Testimonials Section**: 
-    - Customer testimonials and success stories
+  - **Testimonials Section**: \n    - Customer testimonials and success stories
   - **Email Sign Up Form**: 
     - Newsletter subscription or early access registration
+- **Dialog Behavior**: \n  - Dialog can be closed by clicking the cancel button
+  - Dialog can be closed by clicking anywhere outside the dialog box
 - **Responsive Design**: Fully responsive layout optimized for desktop and mobile devices
 - **Styling**: Consistent with existing application styling and design system
-\n## 3. Technical Architecture
+\n### 2.27 User Authentication System
+- **Functionality**: Secure user authentication and authorization
+- **Features**:
+  - User registration with email and password
+  - User login with email and password
+  - Password reset functionality
+  - Session management
+  - JWT token-based authentication
+  - **Post-Signup Redirect**: After successful signup, users are redirected to the dashboard page
+- **Endpoints**:\n  - POST /auth/register: User registration
+  - POST /auth/login: User login\n  - POST /auth/logout: User logout
+  - POST /auth/reset-password: Password reset request
+  - POST /auth/confirm-reset: Confirm password reset
+\n### 2.28 Team Management System
+- **Functionality**: Team collaboration with role-based access control
+- **Roles**:
+  - **Admin**: Full team management permissions
+    - Invite new members to team
+    - Remove members from team
+    - Manage team settings
+    - Create and manage projects
+    - Assign tasks to team members
+  - **Member**: Limited permissions
+    - View team settings (read-only)
+    - View projects and tasks
+    - Update assigned tasks
+    - Cannot invite/remove members
+    - Cannot modify team settings
+- **Features**:
+  - Team creation\n  - Member invitation via email
+  - Member removal by admin
+  - Role assignment and management
+  - Team settings management (admin only)
+- **Endpoints**:
+  - POST /teams: Create new team
+  - GET /teams/:teamId: Get team details
+  - POST /teams/:teamId/invite: Invite member (admin only)
+  - DELETE /teams/:teamId/members/:userId: Remove member (admin only)
+  - GET /teams/:teamId/members: List team members
+  - PUT /teams/:teamId/settings: Update team settings (admin only)\n
+### 2.29 Project Management System
+- **Functionality**: Project creation and management within teams
+- **Features**:
+  - Create projects within team context
+  - Project details (name, description, created date)
+  - Project ownership and access control
+  - List all projects for a team
+- **Permissions**:
+  - All team members can view projects
+  - Admins can create and manage projects
+- **Endpoints**:
+  - POST /teams/:teamId/projects: Create new project
+  - GET /teams/:teamId/projects: List all projects
+  - GET /projects/:projectId: Get project details\n  - PUT /projects/:projectId: Update project (admin only)
+  - DELETE /projects/:projectId: Delete project (admin only)
+\n### 2.30 Task Management System with Real-time Updates
+- **Functionality**: Task creation, assignment, and tracking with real-time synchronization
+- **Task Properties**:
+  - **title**: Task title (required)
+  - **description**: Task description (optional)
+  - **status**: Task status (required)
+    - todo: Task not started
+    - in progress: Task currently being worked on
+    - completed: Task finished
+  - **assigned user**: User assigned to task (optional)
+  - **created date**: Task creation timestamp
+  - **updated date**: Task last update timestamp
+- **Features**:
+  - Create tasks within projects
+  - Assign tasks to team members
+  - Update task status
+  - Update task details (title, description)
+  - Reassign tasks\n  - Real-time task updates using Supabase Realtime
+  - Task filtering by status
+  - Task filtering by assigned user
+- **Real-time Synchronization**:
+  - Task status changes broadcast to all team members in real-time
+  - Task assignments update instantly across all connected clients
+  - Task updates (title, description) synchronized immediately
+- **Endpoints**:
+  - POST /projects/:projectId/tasks: Create new task
+  - GET /projects/:projectId/tasks: List all tasks for project
+  - GET /tasks/:taskId: Get task details
+  - PUT /tasks/:taskId: Update task\n  - DELETE /tasks/:taskId: Delete task
+  - PUT /tasks/:taskId/status: Update task status
+  - PUT /tasks/:taskId/assign: Assign task to user
+\n### 2.31 Dashboard Task Analytics
+- **Functionality**: Display task completion progress and assigned tasks on dashboard
+- **Features**:
+  - **Task Completion Progress**:
+    - Overall completion percentage for all tasks assigned to current user
+    - Visual progress bar showing completion rate
+    - Breakdown by status (todo, in progress, completed)
+  - **Assigned Tasks Overview**:
+    - List of all tasks assigned to current user\n    - Task status indicators (color-coded badges)
+    - Quick task status update functionality
+    - Filter tasks by status
+    - Sort tasks by creation date or due date
+- **Real-time Updates**: Task analytics update in real-time as tasks are modified
+- **Endpoint**: GET /dashboard/tasks/analytics
+
+### 2.32 Stripe Payment Integration
+- **Functionality**: Payment processing for pricing tier subscriptions
+- **Features**:
+  - Stripe Checkout integration for subscription payments
+  - Support for all pricing tiers (Free, Basic, Premium, Business)\n  - Subscription management (upgrade, downgrade, cancel)
+  - Payment method management\n  - Invoice generation and history
+  - Webhook handling for payment events
+  - Automatic tier access control based on subscription status
+  - **Payment Notification**: Display notification indicating payment success or failure
+  - **Notification Auto-Dismiss**: Notification automatically disappears after 5 seconds
+- **Payment Flow**:
+  1. User selects pricing tier
+  2. Redirect to Stripe Checkout
+  3. User completes payment
+  4. Webhook confirms payment
+  5. Display success/failure notification (auto-dismiss after 5 seconds)
+  6. User tier updated automatically
+  7. Access granted to tier-specific features
+- **Endpoints**:
+  - POST /billing/checkout: Create Stripe Checkout session
+  - POST /billing/portal: Create Stripe Customer Portal session
+  - POST /billing/webhook: Handle Stripe webhook events
+  - GET /billing/subscription: Get current subscription details
+  - POST /billing/cancel: Cancel subscription
+
+## 3. Technical Architecture
 
 ### 3.1 Data Processing\n- Preallocated fixed-size contiguous ring buffer for real-time data storage
 - Index modulo window size for circular access\n- Zero reallocation per event, no per-event object churn
@@ -304,14 +433,19 @@ The application now includes a clean, modern frontend interface with hero sectio
 \n### 3.3 API Design
 - RESTful API architecture\n- Real-time event ingestion
 - Batch ingestion endpoint
-- On-demand metric query
-- Type-safe implementation (no any casts)
+- On-demand metric query\n- Type-safe implementation (no any casts)
 - Dedicated sell endpoints for anomaly and prediction results
 - Decision hook integration points
 - One-click export endpoints
 - Auditable configuration endpoints
 - System health endpoints
-\n### 3.4 Dashboard Components
+- User authentication endpoints
+- Team management endpoints
+- Project management endpoints
+- Task management endpoints
+- Billing and payment endpoints
+
+### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
 - Time-series chart with proper timestamp handling:\n  - Numeric timestamps internally
   - Formatted display in tooltips and axis ticks
@@ -323,23 +457,27 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Time-Window Display Panel**: Show start time, end time, window size for current analysis
 - **Data Sufficiency Indicators**: Visual indicators (progress bars, status badges) showing data completeness
 - **Rate-Limit & Backpressure Dashboard**: Display current rate-limit status, remaining quota, backpressure metrics, queue depth visualization
-- **Confidence & Sufficiency Aware Messaging**: Contextual messages explaining result reliability\n- **Embeddable Component Support**: Integration of embeddable widgets\n- **Insight Lifecycle Visualization**: Display insight states with visual indicators and state transition history
+- **Confidence & Sufficiency Aware Messaging**: Contextual messages explaining result reliability
+- **Embeddable Component Support**: Integration of embeddable widgets\n- **Insight Lifecycle Visualization**: Display insight states with visual indicators and state transition history
 - **Config Version Display**: Show current config version in use
 - **Signal Quality Indicators**: Display edge case flags and degenerate pattern warnings
 - **System Health Panel**: Separate panel for systemic anomaly monitoring
-
-### 3.5 Real-time Integration
+- **Task Completion Progress Widget**: Display overall task completion percentage for current user
+- **Assigned Tasks Widget**: Show list of tasks assigned to current user with status indicators and quick update functionality
+\n### 3.5 Real-time Integration
 - Supabase Realtime for live data streaming
 - WebSocket connections for dashboard updates
 - AnomalyAlert component integration
+- Real-time task updates and synchronization
+- Real-time team collaboration features
 \n### 3.6 Reporting & Pricing System
 - Automated weekly report generation engine
 - Alert-driven pricing tier calculation logic (data-driven, not logic-based)
-- Report delivery system (email, notification, API)\n- Pricing tier API endpoints
+- Report delivery system (email, notification, API)
+- Pricing tier API endpoints
 - One-click export functionality integration
 - Config snapshot storage with each report
-
-### 3.7 Deterministic Reproducibility System
+\n### 3.7 Deterministic Reproducibility System
 - Fixed random seed management
 - Deterministic sorting and computation order
 - Reproducibility hash generation for verification
@@ -365,8 +503,7 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Audit Trail**: Complete audit log of config changes\n
 ### 3.9 Modular and Composable Architecture
 - **Composability Focus**: Design for composability, not reuse
-- **Modular Components**: Separate modules for DSP, caching, alerting, reporting, export, embedding, config management, insight lifecycle, edge case detection, systemic anomaly detection
-- **Concise Refactoring**: Eliminate redundancy, centralize common logic
+- **Modular Components**: Separate modules for DSP, caching, alerting, reporting, export, embedding, config management, insight lifecycle, edge case detection, systemic anomaly detection, authentication, team management, project management, task management, billing\n- **Concise Refactoring**: Eliminate redundancy, centralize common logic
 - **Zero Magic Numbers**: All constants defined in centralized config
 \n### 3.10 Data Minimization and Privacy Architecture
 - **Hard Invariant**: No names, emails, addresses in analytics paths
@@ -397,14 +534,18 @@ The application now includes a clean, modern frontend interface with hero sectio
   - Event storage: Encrypted\n  - Config tables: Encrypted
   - Reports: Encrypted
   - Usage logs: Encrypted
-- **In Transit Encryption**:
-  - API traffic: TLS everywhere, no exceptions
+  - User credentials: Encrypted
+  - Team data: Encrypted
+  - Project data: Encrypted
+  - Task data: Encrypted
+- **In Transit Encryption**:\n  - API traffic: TLS everywhere, no exceptions
   - Widget embeds: TLS required\n  - Webhooks: TLS required
+  - Real-time connections: TLS required
 - **Secrets & Keys Management**:
   - API keys: Encrypted, rotatable, scoped, revocable
   - Webhook secrets: Encrypted, rotatable, scoped, revocable
   - Embed tokens: Encrypted, rotatable, scoped, revocable
-- **Not Encrypted**:
+  - Stripe API keys: Encrypted, rotatable\n- **Not Encrypted**:
   - Derived analytics: Not encrypted (aggregated, non-sensitive)
   - Aggregated metrics: Not encrypted (aggregated, non-sensitive)
   - Scores: Not encrypted (aggregated, non-sensitive)
@@ -415,11 +556,31 @@ The application now includes a clean, modern frontend interface with hero sectio
 - **Technology Stack**: React + Tailwind CSS + Shadcn\n- **Component Structure**: Modular, reusable components
 - **Responsive Design**: Mobile-first approach with breakpoints for desktop
 - **Dialog Component**: HTML dialog element for call-to-action interactions
+  - **Dialog Close Behavior**: Dialog can be closed by clicking cancel button or clicking outside the dialog box
 - **Styling Consistency**: Maintain existing application design system and styling patterns
-- **Accessibility**: WCAG compliant, keyboard navigation support
-- **Performance**: Optimized loading, lazy loading for images and components
+- **Accessibility**: WCAG compliant, keyboard navigation support\n- **Performance**: Optimized loading, lazy loading for images and components
 
-## 4. System Characteristics
+### 3.15 Authentication & Authorization Architecture
+- **Authentication Method**: JWT token-based authentication
+- **Session Management**: Secure session handling with token refresh
+- **Role-Based Access Control (RBAC)**:
+  - Admin role: Full permissions
+  - Member role: Limited permissions
+- **Permission Enforcement**: Server-side permission checks on all protected endpoints
+- **Token Security**: HTTP-only cookies for token storage, CSRF protection
+- **Post-Signup Flow**: Redirect users to dashboard page after successful signup
+\n### 3.16 Team Collaboration Architecture
+- **Multi-tenancy**: Team-based data isolation
+- **Real-time Collaboration**: Supabase Realtime for live team updates
+- **Access Control**: Team-level and project-level access control
+- **Invitation System**: Email-based member invitation with secure tokens
+\n### 3.17 Payment Processing Architecture
+- **Payment Gateway**: Stripe integration\n- **Subscription Management**: Stripe Subscriptions API
+- **Webhook Processing**: Secure webhook handling with signature verification
+- **Tier Access Control**: Automatic feature access based on subscription tier
+- **Payment Security**: PCI DSS compliant payment processing (handled by Stripe)
+- **Payment Notifications**: Display success/failure notifications with 5-second auto-dismiss
+\n## 4. System Characteristics
 - Lightweight and elegant design
 - High performance and scalability
 - Real-time processing capability
@@ -451,8 +612,12 @@ The application now includes a clean, modern frontend interface with hero sectio
 - Systemic anomaly detection separate from seller analytics
 - Comprehensive encryption strategy (at rest, in transit, secrets & keys)
 - Modern, responsive frontend with clean design and intuitive user experience
-
-## 5. System Constitution
+- Secure user authentication and authorization
+- Role-based team collaboration with Admin/Member roles
+- Real-time task management and synchronization
+- Dashboard task analytics with completion progress and assigned tasks overview
+- Integrated Stripe payment processing with success/failure notifications
+\n## 5. System Constitution
 
 ### 5.1 Purpose and Scope
 This System Constitution defines the foundational principles, invariants, and governance rules that govern the Lush Analytics platform. It serves as the authoritative reference for all system design, implementation, and operational decisions. All system components, modules, and behaviors must conform to the principles and invariants articulated herein.
@@ -506,9 +671,9 @@ We enforce strict data minimization as a core architectural principle. No person
 
 ### 6.3 Encryption and Data Protection
 
-We employ comprehensive encryption strategies to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, and usage logs are encrypted using industry-standard encryption algorithms.
-- **In Transit**: All API traffic, widget embeds, and webhooks use TLS encryption without exception.
-- **Secrets & Keys**: API keys, webhook secrets, and embed tokens are encrypted, rotatable, scoped, and revocable. Automated key rotation policies are enforced.
+We employ comprehensive encryption strategies to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, usage logs, user credentials, team data, project data, and task data are encrypted using industry-standard encryption algorithms.
+- **In Transit**: All API traffic, widget embeds, webhooks, and real-time connections use TLS encryption without exception.
+- **Secrets & Keys**: API keys, webhook secrets, embed tokens, and Stripe API keys are encrypted, rotatable, scoped, and revocable. Automated key rotation policies are enforced.
 \nDerived analytics, aggregated metrics, and scores are not encrypted, as they are aggregated and non-sensitive by design.
 
 ### 6.4 Determinism and Auditability

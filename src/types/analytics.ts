@@ -13,7 +13,7 @@ export interface Event {
   id: string;
   seller_id: string;
   timestamp: number;
-  type: 'SALE' | 'CLICK' | 'VIEW';
+  type: 'SALE' | 'CLICK' | 'VIEW' | 'CHECKOUT_STARTED' | 'PAYMENT_SUCCEEDED';
   value: number;
   created_at: string;
 }
@@ -21,7 +21,7 @@ export interface Event {
 export interface EventInput {
   sellerId: string;
   timestamp: number;
-  type: 'SALE' | 'CLICK' | 'VIEW';
+  type: 'SALE' | 'CLICK' | 'VIEW' | 'CHECKOUT_STARTED' | 'PAYMENT_SUCCEEDED';
   value: number;
 }
 

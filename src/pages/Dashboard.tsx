@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, MousePointer, Eye, Activity, RefreshCw, Radio } from 'lucide-react';
+import { TrendingUp, MousePointer, Eye, Activity, RefreshCw, Radio, ShoppingCart, CreditCard } from 'lucide-react';
 import type { 
   Seller, 
   Event, 
@@ -119,15 +119,21 @@ export default function Dashboard() {
     const sales = events.filter(e => e.type === 'SALE');
     const clicks = events.filter(e => e.type === 'CLICK');
     const views = events.filter(e => e.type === 'VIEW');
+    const checkouts = events.filter(e => e.type === 'CHECKOUT_STARTED');
+    const payments = events.filter(e => e.type === 'PAYMENT_SUCCEEDED');
 
     const totalSales = sales.reduce((sum, e) => sum + e.value, 0);
     const totalClicks = clicks.length;
     const totalViews = views.length;
+    const totalCheckouts = checkouts.length;
+    const totalPayments = payments.length;
 
     return {
       totalSales: totalSales.toFixed(2),
       totalClicks,
       totalViews,
+      totalCheckouts,
+      totalPayments,
       avgSaleValue: sales.length > 0 ? (totalSales / sales.length).toFixed(2) : '0',
     };
   };
@@ -237,6 +243,23 @@ export default function Dashboard() {
           icon={Activity}
           description="Per transaction"
           status="normal"
+        />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <MetricsCard
+          title="Checkout Started"
+          value={metrics.totalCheckouts}
+          icon={ShoppingCart}
+          description="Last 24 hours"
+          status="info"
+        />
+        <MetricsCard
+          title="Payment Succeeded"
+          value={metrics.totalPayments}
+          icon={CreditCard}
+          description="Last 24 hours"
+          status="success"
         />
       </div>
 
