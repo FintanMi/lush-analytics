@@ -34,12 +34,12 @@ function SidebarNav() {
     <>
       <SidebarHeader className="border-b border-sidebar-border p-6">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-primary to-chart-4 rounded-xl shadow-lg shadow-primary/20">
-            <Activity className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg shadow-primary/10">
+            <span className="text-xl font-bold gradient-text">LA</span>
           </div>
           <div>
-            <h2 className="font-bold text-lg tracking-tight">Analytics API</h2>
-            <p className="text-xs text-muted-foreground">E-commerce Insights</p>
+            <h2 className="font-bold text-lg tracking-tight">Lush Analytics</h2>
+            <p className="text-xs text-muted-foreground">Real-time Insights</p>
           </div>
         </div>
       </SidebarHeader>
@@ -70,7 +70,7 @@ function SidebarNav() {
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">© 2026 Analytics API</p>
+          <p className="text-xs text-muted-foreground">© 2026 Lush Analytics</p>
           <ModeToggle />
         </div>
       </SidebarFooter>

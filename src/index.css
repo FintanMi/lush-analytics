@@ -265,4 +265,37 @@ All colors MUST be HSL.
       transform: scale(1);
     }
   }
+
+  /* CSS-only Accordion for Pricing */
+  .pricing-accordion-item {
+    @apply bg-card border border-border rounded-xl overflow-hidden transition-all duration-300;
+  }
+
+  .pricing-accordion-input {
+    @apply hidden;
+  }
+
+  .pricing-accordion-label {
+    @apply block p-6 cursor-pointer transition-all duration-300 hover:bg-accent/50;
+  }
+
+  .pricing-accordion-content {
+    @apply max-h-0 overflow-hidden transition-all duration-500 ease-in-out bg-muted/30;
+  }
+
+  .pricing-accordion-input:checked ~ .pricing-accordion-content {
+    @apply max-h-[1000px];
+  }
+
+  .pricing-accordion-icon {
+    @apply transition-transform duration-300;
+  }
+
+  .pricing-accordion-input:checked ~ .pricing-accordion-label .pricing-accordion-icon {
+    @apply rotate-180;
+  }
+
+  .pricing-accordion-input:checked ~ .pricing-accordion-label {
+    @apply bg-accent/30;
+  }
 }

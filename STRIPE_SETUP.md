@@ -132,21 +132,41 @@ Two Edge Functions handle payment processing:
 
 ### Error: "STRIPE_SECRET_KEY not configured"
 - **Solution**: Follow Step 2 to add your Stripe secret key to Supabase
+- **Verification**: Check Supabase Dashboard → Settings → Edge Functions → Secrets
+- **Note**: The application will display a user-friendly error message if this is not configured
+
+### Error: "Payment system not configured. Please contact support."
+- **Cause**: STRIPE_SECRET_KEY environment variable is missing or incorrect
+- **Solution**: 
+  1. Verify the secret key is added to Supabase Edge Functions
+  2. Ensure the key starts with `sk_test_` (test mode) or `sk_live_` (production)
+  3. Redeploy Edge Functions if you just added the key
 
 ### Payment page doesn't open
 - **Check**: Browser popup blocker settings
-- **Check**: Console for JavaScript errors
-- **Check**: Network tab for failed API calls
+- **Check**: Console for JavaScript errors (F12 → Console tab)
+- **Check**: Network tab for failed API calls (F12 → Network tab)
+- **Solution**: Allow popups for your domain or check console for specific errors
 
 ### Payment verification fails
 - **Check**: Stripe secret key is correct
 - **Check**: Using the correct Stripe account (test vs. live)
 - **Check**: Edge Functions are deployed successfully
+- **Check**: Network tab shows successful call to verify_stripe_payment
 
 ### Orders not appearing in database
 - **Check**: Database permissions (RLS policies)
-- **Check**: Edge Function logs in Supabase dashboard
+- **Check**: Edge Function logs in Supabase dashboard (Logs → Edge Functions)
 - **Check**: Stripe webhook configuration (if using webhooks)
+- **Check**: Console logs for any database errors
+
+### "Failed to create checkout session" error
+- **Possible causes**:
+  1. Invalid Stripe API key
+  2. Network connectivity issues
+  3. Stripe API rate limits
+  4. Invalid pricing configuration
+- **Solution**: Check browser console and Supabase Edge Function logs for detailed error messages
 
 ## Security Notes
 

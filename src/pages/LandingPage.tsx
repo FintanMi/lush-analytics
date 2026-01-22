@@ -167,7 +167,8 @@ export default function LandingPage() {
       });
 
       if (error) {
-        throw error;
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to create checkout session');
       }
 
       if (data?.code === 'SUCCESS' && data?.data?.url) {
@@ -178,14 +179,25 @@ export default function LandingPage() {
           description: 'Opening Stripe checkout in a new tab...',
           duration: 5000,
         });
+      } else if (data?.code === 'FAIL') {
+        throw new Error(data?.message || 'Failed to create checkout session');
       } else {
-        throw new Error('Failed to create checkout session');
+        throw new Error('Invalid response from payment service');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Checkout error:', error);
+      
+      let errorMessage = 'Failed to initiate payment. Please try again.';
+      
+      if (error?.message?.includes('STRIPE_SECRET_KEY')) {
+        errorMessage = 'Payment system not configured. Please contact support.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Payment Failed',
-        description: error instanceof Error ? error.message : 'Failed to initiate payment. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
         duration: 5000,
       });
@@ -339,50 +351,70 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {/* CSS-only Accordion */}
+          <div className="max-w-4xl mx-auto space-y-4">
             {pricingTiers.map((tier, index) => (
-              <Card 
-                key={index}
-                className={`card-modern relative ${
-                  tier.highlighted 
-                    ? 'ring-2 ring-primary shadow-xl scale-105' 
-                    : ''
-                }`}
-              >
-                {tier.highlighted && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-4 py-1">
-                      Most Popular
-                    </Badge>
+              <div key={index} className="pricing-accordion-item">
+                <input 
+                  type="radio" 
+                  name="pricing-accordion" 
+                  id={`pricing-${index}`}
+                  className="pricing-accordion-input"
+                  defaultChecked={tier.highlighted}
+                />
+                <label 
+                  htmlFor={`pricing-${index}`}
+                  className={`pricing-accordion-label ${
+                    tier.highlighted ? 'ring-2 ring-primary' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-4">
+                      {tier.highlighted && (
+                        <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1">
+                          Most Popular
+                        </Badge>
+                      )}
+                      <div>
+                        <h3 className="text-xl font-bold">{tier.name}</h3>
+                        <p className="text-sm text-muted-foreground">{tier.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <span className="text-3xl font-bold">€{tier.price}</span>
+                        <span className="text-muted-foreground text-sm">/{tier.period}</span>
+                      </div>
+                      <div className="pricing-accordion-icon">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                  <CardDescription>{tier.description}</CardDescription>
-                  <div className="pt-4">
-                    <span className="text-4xl font-bold">€{tier.price}</span>
-                    <span className="text-muted-foreground">/{tier.period}</span>
+                </label>
+                <div className="pricing-accordion-content">
+                  <div className="p-6 space-y-6">
+                    <ul className="grid md:grid-cols-2 gap-3">
+                      {tier.features.map((feature, featureIndex) => (
+                        <li key={featureIndex} className="flex items-start gap-2">
+                          <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button 
+                      className="w-full"
+                      variant={tier.highlighted ? 'default' : 'outline'}
+                      size="lg"
+                      onClick={() => handleCheckout(tier)}
+                      disabled={processingPayment}
+                    >
+                      {processingPayment ? 'Processing...' : tier.priceValue === 0 ? 'Get Started' : 'Subscribe Now'}
+                    </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-3">
-                    {tier.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button 
-                    className="w-full mt-6"
-                    variant={tier.highlighted ? 'default' : 'outline'}
-                    onClick={() => handleCheckout(tier)}
-                    disabled={processingPayment}
-                  >
-                    {processingPayment ? 'Processing...' : tier.priceValue === 0 ? 'Get Started' : 'Subscribe Now'}
-                  </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </div>
