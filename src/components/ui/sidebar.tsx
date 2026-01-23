@@ -103,29 +103,43 @@ function SidebarProvider({
   style,
   children,
   ...props
-}: ProviderProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
-  // ✅ Read persisted sidebar state from cookie on mount
+  // ✅ Read persisted sidebar state from cookie
   const [_open, _setOpen] = React.useState(() => {
     if (typeof document === "undefined") return defaultOpen;
-    return cookieUtils.getBoolean(SIDEBAR_COOKIE_NAME, defaultOpen);
+
+    const cookie = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+
+    if (!cookie) return defaultOpen;
+    return cookie.split("=")[1] === "true";
   });
 
   const open = openProp ?? _open;
 
-  // ✅ Safe setter with functional update support and cookie persistence
-  const setOpen = React.useCallback<StateSetter<boolean>>(
-    (value) => {
+  // ✅ Safe setter (supports functional updates)
+  const setOpen = React.useCallback(
+    (value: boolean | ((prev: boolean) => boolean)) => {
       _setOpen((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
 
-        // Notify parent component if controlled
-        setOpenProp?.(next);
+        if (setOpenProp) {
+          setOpenProp(next);
+        }
 
-        // Persist to cookie
-        cookieUtils.set(SIDEBAR_COOKIE_NAME, String(next), SIDEBAR_COOKIE_MAX_AGE);
+        try {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${next}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+        } catch {
+          // ignore cookie errors
+        }
 
         return next;
       });
@@ -133,7 +147,7 @@ function SidebarProvider({
     [setOpenProp]
   );
 
-  // ✅ Unified toggle handler for desktop and mobile
+  // ✅ Unified toggle (desktop vs mobile)
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
       setOpenMobile((prev) => !prev);
@@ -160,7 +174,7 @@ function SidebarProvider({
 
   const state: SidebarState = open ? "expanded" : "collapsed";
 
-  const contextValue = React.useMemo<SidebarContextProps>(
+  const contextValue = React.useMemo(
     () => ({
       state,
       open,
@@ -186,7 +200,7 @@ function SidebarProvider({
             } as React.CSSProperties
           }
           className={cn(
-            "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
+            "group/sidebar-wrapper has-[[data-variant=inset]]:bg-sidebar flex min-h-svh w-full",
             className
           )}
           {...props}
@@ -257,7 +271,7 @@ function Sidebar({
 
   return (
     <div
-      className="group peer text-sidebar-foreground hidden md:block"
+      className={cn("group peer text-sidebar-foreground hidden md:block", className)}
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
@@ -286,8 +300,7 @@ function Sidebar({
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className
+            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l"
         )}
         {...props}
       >

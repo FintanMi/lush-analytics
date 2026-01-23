@@ -1,4 +1,18 @@
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
+import { 
+  SidebarProvider, 
+  Sidebar, 
+  SidebarContent, 
+  SidebarGroup, 
+  SidebarGroupContent, 
+  SidebarGroupLabel, 
+  SidebarMenu, 
+  SidebarMenuButton, 
+  SidebarMenuItem, 
+  SidebarHeader, 
+  SidebarFooter, 
+  SidebarTrigger,
+  SidebarInset
+} from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard, Upload, Users, Menu, Activity } from 'lucide-react';
@@ -81,45 +95,42 @@ function SidebarNav() {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full gradient-bg">
-        <Sidebar collapsible="icon" className="hidden lg:flex border-r border-border">
-          <SidebarNav />
-        </Sidebar>
+      <Sidebar collapsible="icon" className="border-r border-border">
+        <SidebarNav />
+      </Sidebar>
+      <SidebarInset className="flex flex-col overflow-hidden">
+        <header className="sticky top-0 z-40 glass border-b border-border/50">
+          <div className="flex h-16 items-center gap-4 px-6">
+            {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
+            <SidebarTrigger className="hidden lg:flex" />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="sticky top-0 z-40 glass border-b border-border/50">
-            <div className="flex h-16 items-center gap-4 px-6">
-              {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
-              <SidebarTrigger className="hidden lg:flex" />
-
-              {/* Mobile menu */}
-              <div className="lg:hidden">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="p-0 w-64">
-                    <Sidebar>
-                      <SidebarNav />
-                    </Sidebar>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              <div className="flex-1" />
-              <ModeToggle />
+            {/* Mobile menu */}
+            <div className="lg:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-64">
+                  <Sidebar collapsible="none" className="h-full">
+                    <SidebarNav />
+                  </Sidebar>
+                </SheetContent>
+              </Sheet>
             </div>
-          </header>
 
-          <main className="flex-1 overflow-auto scrollbar-thin">
-            <div className="animate-fade-in">
-              {children}
-            </div>
-          </main>
-        </div>
-      </div>
+            <div className="flex-1" />
+            <ModeToggle />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto scrollbar-thin gradient-bg">
+          <div className="animate-fade-in">
+            {children}
+          </div>
+        </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

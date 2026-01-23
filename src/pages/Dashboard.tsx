@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { analyticsApi } from '@/services/analytics';
 import { MetricsCard } from '@/components/analytics/MetricsCard';
 import { AnomalyAlert } from '@/components/analytics/AnomalyAlert';
@@ -115,7 +115,7 @@ export default function Dashboard() {
     }
   };
 
-  const calculateMetrics = () => {
+  const metrics = useMemo(() => {
     const sales = events.filter(e => e.type === 'SALE');
     const clicks = events.filter(e => e.type === 'CLICK');
     const views = events.filter(e => e.type === 'VIEW');
@@ -136,9 +136,7 @@ export default function Dashboard() {
       totalPayments,
       avgSaleValue: sales.length > 0 ? (totalSales / sales.length).toFixed(2) : '0',
     };
-  };
-
-  const metrics = calculateMetrics();
+  }, [events]);
 
   if (loading) {
     return (

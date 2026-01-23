@@ -1,9 +1,11 @@
-import LandingPage from './pages/LandingPage';
-import Dashboard from './pages/Dashboard';
-import EventIngestion from './pages/EventIngestion';
-import SellerManagement from './pages/SellerManagement';
-import PaymentSuccess from './pages/PaymentSuccess';
+import { lazy } from 'react';
 import type { ReactNode } from 'react';
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const EventIngestion = lazy(() => import('./pages/EventIngestion'));
+const SellerManagement = lazy(() => import('./pages/SellerManagement'));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 
 interface RouteConfig {
   name: string;

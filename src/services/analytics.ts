@@ -292,15 +292,15 @@ export const analyticsApi = {
     if (error) throw error;
 
     const sellerData = data as unknown as { api_calls_count: number | null; api_calls_limit: number | null; pricing_tier: string | null };
-    const current = sellerData.api_calls_count || 0;
-    const limit = sellerData.api_calls_limit || 1000;
+    const current = sellerData?.api_calls_count ?? 0;
+    const limit = sellerData?.api_calls_limit ?? 1000;
 
     return {
       current,
       limit,
       remaining: Math.max(0, limit - current),
       resetAt: Date.now() + 3600000,
-      tier: (sellerData.pricing_tier as 'free' | 'basic' | 'pro' | 'enterprise') || 'free',
+      tier: (sellerData?.pricing_tier as 'free' | 'basic' | 'pro' | 'enterprise') ?? 'free',
     };
   },
 

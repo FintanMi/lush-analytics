@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import IntersectObserver from '@/components/common/IntersectObserver';
 import { AppLayout } from '@/components/layouts/AppLayout';
@@ -16,19 +16,12 @@ function AppContent() {
   return (
     <>
       <IntersectObserver />
-      {showWithoutLayout ? (
-        <Routes>
-          {routes.map((route, index) => (
-            <Route
-              key={index}
-              path={route.path}
-              element={route.element}
-            />
-          ))}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      ) : (
-        <AppLayout>
+      <Suspense fallback={
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        </div>
+      }>
+        {showWithoutLayout ? (
           <Routes>
             {routes.map((route, index) => (
               <Route
@@ -39,8 +32,21 @@ function AppContent() {
             ))}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </AppLayout>
-      )}
+        ) : (
+          <AppLayout>
+            <Routes>
+              {routes.map((route, index) => (
+                <Route
+                  key={index}
+                  path={route.path}
+                  element={route.element}
+                />
+              ))}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppLayout>
+        )}
+      </Suspense>
       <Toaster />
     </>
   );
