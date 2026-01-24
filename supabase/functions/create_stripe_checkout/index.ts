@@ -40,12 +40,12 @@ function ok(data: any): Response {
   );
 }
 
-// Error response
+// Error response - return 200 with error code for better client handling
 function fail(msg: string, code = 400): Response {
   return new Response(
     JSON.stringify({ code: "FAIL", message: msg }),
     {
-      status: code,
+      status: 200, // Return 200 to avoid Supabase client error handling
       headers: {
         "Content-Type": "application/json",
         ...corsHeaders
@@ -181,6 +181,7 @@ Deno.serve(async (req) => {
       orderId: order.id,
     });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Payment processing failed", 500);
+    console.error("Checkout error:", error);
+    return fail(error instanceof Error ? error.message : "Payment processing failed");
   }
 });

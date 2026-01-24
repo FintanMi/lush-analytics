@@ -1,4 +1,4 @@
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard, Upload, Users, Menu, Activity, Webhook, Filter } from 'lucide-react';
@@ -91,11 +91,9 @@ function SidebarNav() {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r border-border">
-        <SidebarNav />
-      </Sidebar>
-      <SidebarInset className="flex flex-col overflow-hidden">
-        <header className="sticky top-0 z-40 glass border-b border-border/50">
+      <div className="flex min-h-screen w-full flex-col">
+        {/* Top Navigation Bar */}
+        <nav className="sticky top-0 z-50 glass border-b border-border/50">
           <div className="flex h-16 items-center gap-4 px-6">
             {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
             <SidebarTrigger className="hidden lg:flex" />
@@ -116,17 +114,33 @@ export function AppLayout({ children }: AppLayoutProps) {
               </Sheet>
             </div>
 
+            {/* Logo/Brand */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg shadow-primary/10">
+                <span className="text-lg font-bold gradient-text">LA</span>
+              </div>
+              <div className="hidden sm:block">
+                <h2 className="font-bold text-base tracking-tight">Lush Analytics</h2>
+              </div>
+            </div>
+
             <div className="flex-1" />
             <ModeToggle />
           </div>
-        </header>
+        </nav>
 
-        <main className="flex-1 overflow-auto scrollbar-thin gradient-bg">
-          <div className="animate-fade-in">
-            {children}
-          </div>
-        </main>
-      </SidebarInset>
+        {/* Main Content Area with Sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar collapsible="icon" className="hidden lg:block border-r border-border">
+            <SidebarNav />
+          </Sidebar>
+          <main className="flex-1 overflow-auto scrollbar-thin gradient-bg">
+            <div className="animate-fade-in">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
     </SidebarProvider>
   );
 }

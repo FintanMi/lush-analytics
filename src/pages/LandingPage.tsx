@@ -31,12 +31,22 @@ const features = [
   {
     icon: Zap,
     title: 'Predictive Insights',
-    description: 'Leverage advanced mathematical models to forecast trends, predict sales, and make data-driven decisions with confidence.'
+    description: 'Leverage business intelligence to forecast trends, predict sales, and make data-driven decisions with confidence.'
   },
   {
     icon: BarChart3,
     title: 'Comprehensive Reports',
     description: 'Generate detailed reports with customizable metrics, visualizations, and export options for stakeholder presentations.'
+  },
+  {
+    icon: Shield,
+    title: 'Privacy by Design',
+    description: 'GDPR compliant with strict data minimization. No PII in analytics paths—only behavioral signals on aggregated data.'
+  },
+  {
+    icon: Zap,
+    title: 'High Performance',
+    description: 'Ring buffer architecture with zero per-event allocation. Probabilistic caching ensures sub-millisecond response times.'
   }
 ];
 
@@ -52,7 +62,9 @@ const pricingTiers = [
       'Basic analytics dashboard',
       '7-day data retention',
       'Email support',
-      'Single seller account'
+      'Single seller account',
+      'Privacy by Design',
+      'High Performance'
     ],
     highlighted: false
   },
@@ -69,7 +81,9 @@ const pricingTiers = [
       'Priority email support',
       'Up to 5 seller accounts',
       'Anomaly detection',
-      'Basic predictions'
+      'Basic predictions',
+      'Privacy by Design',
+      'High Performance'
     ],
     highlighted: false
   },
@@ -88,29 +102,11 @@ const pricingTiers = [
       'Advanced anomaly detection',
       'Predictive analytics',
       'Custom reports',
-      'API access'
+      'API access',
+      'Privacy by Design',
+      'High Performance'
     ],
     highlighted: true
-  },
-  {
-    name: 'Business',
-    price: '1200',
-    priceValue: 1200,
-    period: 'month',
-    description: 'For enterprise scale',
-    features: [
-      'Unlimited events',
-      'Enterprise analytics',
-      'Unlimited data retention',
-      'Dedicated account manager',
-      'Unlimited seller accounts',
-      'Real-time anomaly detection',
-      'Advanced mathematical predictions',
-      'Custom integrations',
-      'White-label options',
-      'SLA guarantee'
-    ],
-    highlighted: false
   }
 ];
 
@@ -171,6 +167,11 @@ export default function LandingPage() {
         throw new Error(error.message || 'Failed to create checkout session');
       }
 
+      // Check response code in data
+      if (data?.code === 'FAIL') {
+        throw new Error(data?.message || 'Failed to create checkout session');
+      }
+
       if (data?.code === 'SUCCESS' && data?.data?.url) {
         // Open Stripe checkout in new tab
         window.open(data.data.url, '_blank');
@@ -179,8 +180,6 @@ export default function LandingPage() {
           description: 'Opening Stripe checkout in a new tab...',
           duration: 5000,
         });
-      } else if (data?.code === 'FAIL') {
-        throw new Error(data?.message || 'Failed to create checkout session');
       } else {
         throw new Error('Invalid response from payment service');
       }
@@ -271,9 +270,6 @@ export default function LandingPage() {
       <section className="relative overflow-hidden gradient-bg py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center space-y-8 animate-fade-in">
-            <Badge className="mx-auto w-fit" variant="outline">
-              🚀 Now with AI-Powered Predictions
-            </Badge>
             <h1 className="text-5xl lg:text-7xl font-bold tracking-tight">
               <span className="gradient-text">Lush Analytics</span>
             </h1>
@@ -318,7 +314,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
               <Card 
                 key={index} 
