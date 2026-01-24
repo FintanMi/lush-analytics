@@ -43,10 +43,10 @@ After updating the secret key:
 
 The current placeholder value is:
 ```
-sk_test_placeholder_replace_with_actual_stripe_key
+sk_test_51QzPlaceholder000000000000000000000000000000
 ```
 
-**⚠️ Important**: This placeholder will cause payment errors. You must replace it with a valid Stripe secret key.
+**⚠️ Important**: This placeholder will cause payment errors. You must replace it with a valid Stripe secret key from your Stripe Dashboard.
 
 ## Testing Payments
 

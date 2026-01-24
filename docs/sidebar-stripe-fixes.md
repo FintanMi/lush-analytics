@@ -26,8 +26,8 @@ className="sticky top-0 inset-y-0 z-10 hidden h-svh..."
 
 **Solution**:
 - Updated `STRIPE_SECRET_KEY` in Supabase secrets
-- New format: `sk_test_51QzPlaceholderReplaceWithYourActualStripeSecretKey`
-- Removed invalid "_key" suffix
+- New format: `sk_test_51QzPlaceholder000000000000000000000000000000`
+- Removed invalid suffix and used proper 51-character placeholder format
 
 **Action Required**:
 Administrators must replace the placeholder with an actual Stripe secret key:

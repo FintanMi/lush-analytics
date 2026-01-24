@@ -187,18 +187,27 @@ export default function LandingPage() {
       console.error('Checkout error:', error);
       
       let errorMessage = 'Failed to initiate payment. Please try again.';
+      let errorTitle = 'Payment Failed';
       
+      // Check for specific error types
       if (error?.message?.includes('STRIPE_SECRET_KEY')) {
+        errorTitle = 'Configuration Error';
         errorMessage = 'Payment system not configured. Please contact support.';
+      } else if (error?.message?.includes('Invalid API Key')) {
+        errorTitle = 'Configuration Error';
+        errorMessage = 'Payment system requires configuration. Please contact an administrator to set up the Stripe API key.';
+      } else if (error?.message?.includes('placeholder')) {
+        errorTitle = 'Setup Required';
+        errorMessage = 'Payment processing is not yet configured. Please contact support to enable payments.';
       } else if (error?.message) {
         errorMessage = error.message;
       }
       
       toast({
-        title: 'Payment Failed',
+        title: errorTitle,
         description: errorMessage,
         variant: 'destructive',
-        duration: 5000,
+        duration: 7000,
       });
     } finally {
       setProcessingPayment(false);
