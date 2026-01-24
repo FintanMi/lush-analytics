@@ -8,6 +8,7 @@ const SellerManagement = lazy(() => import('./pages/SellerManagement'));
 const WebhookManagement = lazy(() => import('./pages/WebhookManagement'));
 const FunnelAnalysis = lazy(() => import('./pages/FunnelAnalysis'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 
 interface RouteConfig {
   name: string;
@@ -46,6 +47,11 @@ const routes: RouteConfig[] = [
     name: 'Funnel Analysis',
     path: '/funnels',
     element: <FunnelAnalysis />
+  },
+  {
+    name: 'Admin Panel',
+    path: '/admin',
+    element: <AdminPanel />
   },
   {
     name: 'Payment Success',

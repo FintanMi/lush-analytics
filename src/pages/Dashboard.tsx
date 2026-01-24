@@ -11,6 +11,7 @@ import { BehaviorFingerprintCard } from '@/components/analytics/BehaviorFingerpr
 import { DataSufficiencyBadge } from '@/components/analytics/DataSufficiencyBadge';
 import { RateLimitIndicator } from '@/components/analytics/RateLimitIndicator';
 import { InsightSummaryCard } from '@/components/analytics/InsightSummaryCard';
+import TierStatusWidget from '@/components/analytics/TierStatusWidget';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -190,6 +191,11 @@ export default function Dashboard() {
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
+      </div>
+
+      {/* Tier Status Widget */}
+      <div className="animate-slide-up">
+        <TierStatusWidget />
       </div>
 
       {anomalyData && (

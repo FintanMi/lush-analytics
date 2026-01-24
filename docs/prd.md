@@ -8,7 +8,7 @@ Lush Analytics
 A lightweight, high-performance analytics API system designed for sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and efficient scalable backend architecture utilizing DSP techniques (FIR, FFT, HFD) and probabilistic caching. Enhanced features include automated insight engine, predictive alerts, seller health scoring, behavioral fingerprinting capabilities, deterministic reproducibility, data sufficiency metrics, rate limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, fixed tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency-aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality indicators, comprehensive encryption strategy, webhook registration and management, and funnel analysis.\n
 The application now includes a redesigned modern frontend interface with navigation in the main section (replacing the traditional sidebar), featuring hero section, feature showcase, pricing tiers, testimonials, and email signup functionality, fully responsive for desktop and mobile devices.
 
-**New Features**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, and Stripe payment integration.
+**New Features**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, Stripe payment integration, and admin tier reconciliation system.
 
 ## 2. Core Functionality
 
@@ -18,8 +18,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Payload Structure**:
   - sellerId: Seller identifier (opaque/proxy key only)
   - timestamp: Event timestamp (milliseconds)
-  - type: Event type (SALE / CLICK / VIEW / CHECKOUT_STARTED / PAYMENT_SUCCEEDED)
-  - value: Event value (behavioral signals only, no PII)
+  - type: Event type (SALE / CLICK / VIEW / CHECKOUT_STARTED / PAYMENT_SUCCEEDED)\n  - value: Event value (behavioral signals only, no PII)
 - **Processing Logic**: Add events to pre-allocated fixed-size ring buffers (contiguous arrays), separate buffer per seller per metric. Circular access using index mod window size. No per-event reallocation or object churn.
 - **Data Minimization**: Strip all PII (names, emails, addresses) from event payloads, retain only behavioral signals.\n
 ### 2.2 Batch Ingestion
@@ -57,8 +56,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - reproducibilityHash: Hash for deterministic verification
   - confidenceMessage: Confidence and sufficiency-aware messaging explaining result reliability
   - configVersion: Configuration version used for this computation
-  - signalQuality: Signal quality assessment (degraded patterns, edge case flags)
-
+  - signalQuality: Signal quality assessment (degraded patterns, edge case flags)\n
 ### 2.7 Prediction API
 - **Endpoint**: GET /metrics/:seller/predictions
 - **Functionality**: Return predicted sales/traffic time series data with confidence bands
@@ -66,7 +64,8 @@ The application now includes a redesigned modern frontend interface with navigat
   - predictions: Array of timestamped predicted values
   - confidenceBands: ± confidence intervals around predictions
   - historicalCutoff: Timestamp marking where history ends and predictions begin
-  - timeWindow: Clear time window definition\n  - dataSufficiency: Data sufficiency metrics
+  - timeWindow: Clear time window definition
+  - dataSufficiency: Data sufficiency metrics
   - reproducibilityHash: Hash for deterministic verification
   - confidenceMessage: Confidence and sufficiency-aware messaging explaining prediction reliability
   - configVersion: Configuration version used for this computation
@@ -85,24 +84,26 @@ The application now includes a redesigned modern frontend interface with navigat
   - Confirmed: Insight validated by subsequent data or user action
   - Expired: Insight no longer relevant due to time passage
   - Superseded: Insight replaced by newer, more accurate insight
-- **State Transitions**: Automatic state management based on time, data updates, and user feedback
-- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
+- **State Transitions**: Automatic state management based on time, data updates, and user feedback\n- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
 \n### 2.9 Anomaly Attribution (Root Cause Breakdown)
 - **Functionality**: Explain anomaly score composition\n- **Components**:
   - FFT peak contribution percentage
   - HFD complexity contribution percentage
   - Trend deviation contribution percentage
-  - Smoothed deviation contribution percentage\n\n### 2.10 Predictive Alerts with Single Primary Trigger
+  - Smoothed deviation contribution percentage
+\n### 2.10 Predictive Alerts with Single Primary Trigger
 - **Functionality**: Proactive alert system based on primary trigger and contextual information
 - **Primary Trigger**: Anomaly score threshold (defined in centralized config)
 - **Contextual Information**: Trends, attribution, fingerprints, time windows provided as context, not additional triggers
 - **Alert Levels**: Defined by configuration table (data-driven), not conditional statements
 - **Alert Types**: Potential spike warnings, downtrend alerts, pattern shift notifications
-- **System Invariant**: All alerts must reference data sufficiency status\n
+- **System Invariant**: All alerts must reference data sufficiency status
+
 ### 2.11 Seller Health Score (Composite Index)
 - **Endpoint**: GET /metrics/:seller/health
 - **Functionality**: Calculate composite seller health score\n- **Scoring Factors**:
-  - Volatility level\n  - Anomaly frequency
+  - Volatility level
+  - Anomaly frequency
   - Predictive risk assessment
   - Data consistency metrics
 - **Response Format**: { healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: \"...\", configVersion: \"...\", signalQuality: {...} }
@@ -127,7 +128,8 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Benefits**: Optimize system resources while maintaining accuracy
 
 ### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration\n- **Functionality**: Real-time dashboard updates with AnomalyAlert component
+- **Technology**: Supabase Realtime integration
+- **Functionality**: Real-time dashboard updates with AnomalyAlert component
 - **Features**:
   - Real-time anomaly notifications
   - Real-time metrics updates
@@ -189,11 +191,13 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Response Format**:
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time window definition
-  - dataSufficiency: Data sufficiency metrics\n  - reproducibilityHash: Hash for verification
+  - dataSufficiency: Data sufficiency metrics
+  - reproducibilityHash: Hash for verification
   - confidenceMessage: Confidence and sufficiency-aware messaging
   - configVersion: Configuration version used
   - signalQuality: Signal quality assessment
-\n### 2.20 Dedicated Prediction Endpoint
+
+### 2.20 Dedicated Prediction Endpoint
 - **Endpoint**: POST /sell/prediction
 - **Functionality**: Dedicated endpoint for selling/exposing prediction results to external systems
 - **Payload Structure**:
@@ -240,7 +244,8 @@ The application now includes a redesigned modern frontend interface with navigat
   - Effective-from timestamp for each configuration change
   - Configuration snapshot storage with reports
   - Configuration change audit log
-  - Ability to rollback to previous configuration versions\n- **Endpoints**:
+  - Ability to rollback to previous configuration versions
+- **Endpoints**:
   - GET /config/versions: List all configuration versions
   - GET /config/version/:id: Retrieve specific configuration version
   - GET /config/audit: Retrieve configuration change audit log
@@ -265,8 +270,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Endpoint**: GET /system/health to query systemic anomaly status
 - **Dashboard Integration**: System health panel separate from seller analytics
 
-### 2.26 Frontend Landing Page
-- **Functionality**: Modern landing page showcasing Lush Analytics platform with redesigned navigation
+### 2.26 Frontend Landing Page\n- **Functionality**: Modern landing page showcasing Lush Analytics platform with redesigned navigation
 - **Sections**:
   - **Hero Section**:
     - Headline: Primary value proposition
@@ -303,8 +307,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Endpoints**:\n  - POST /auth/register: User registration
   - POST /auth/login: User login\n  - POST /auth/logout: User logout
   - POST /auth/reset-password: Password reset request
-  - POST /auth/confirm-reset: Confirm password reset
-\n### 2.28 Team Management System
+  - POST /auth/confirm-reset: Confirm password reset\n\n### 2.28 Team Management System
 - **Functionality**: Team collaboration with role-based access control
 - **Roles**:
   - **Admin**: Full team management permissions
@@ -313,12 +316,14 @@ The application now includes a redesigned modern frontend interface with navigat
     - Manage team settings
     - Create and manage projects
     - Assign tasks to team members
+    - Reconcile user pricing tiers
   - **Member**: Limited permissions
     - View team settings (read-only)
     - View projects and tasks
     - Update assigned tasks
     - Cannot invite/remove members
     - Cannot modify team settings
+    - Cannot reconcile pricing tiers
 - **Features**:
   - Team creation\n  - Member invitation via email
   - Member removal by admin
@@ -330,8 +335,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - POST /teams/:teamId/invite: Invite member (admin only)
   - DELETE /teams/:teamId/members/:userId: Remove member (admin only)
   - GET /teams/:teamId/members: List team members
-  - PUT /teams/:teamId/settings: Update team settings (admin only)\n
-### 2.29 Project Management System
+  - PUT /teams/:teamId/settings: Update team settings (admin only)\n\n### 2.29 Project Management System
 - **Functionality**: Create and manage projects within team context
 - **Features**:
   - Create projects within team context
@@ -397,26 +401,33 @@ The application now includes a redesigned modern frontend interface with navigat
   - Stripe Checkout integration for subscription payments
   - Support for all pricing tiers (Free, Basic, Premium)
   - Subscription management (upgrade, downgrade, cancel)
-  - Payment method management
-  - Invoice generation and history
+  - Payment method management\n  - Invoice generation and history
   - Webhook handling for payment events
   - Automatic tier access control based on subscription status
   - **Payment Notifications**: Display notifications indicating payment success or failure
   - **Notification Auto-dismiss**: Notifications automatically disappear after 5 seconds
+  - **Payment System Configuration Validation**: Validate Stripe API keys and configuration before processing payments
+  - **Error Handling**: Display clear error messages when payment system is not properly configured
 - **Payment Flow**:
-  1. User selects pricing tier
-  2. Redirect to Stripe Checkout
-  3. User completes payment
-  4. Webhook confirms payment
-  5. Display success/failure notification (auto-dismiss after 5 seconds)
-  6. User tier automatically updated
-  7. Grant access to tier-specific features
+  1. Validate payment system configuration (Stripe API keys present and valid)
+  2. User selects pricing tier
+  3. Redirect to Stripe Checkout
+  4. User completes payment
+  5. Webhook confirms payment
+  6. Display success/failure notification (auto-dismiss after 5 seconds)
+  7. User tier automatically updated
+  8. Grant access to tier-specific features
+- **Configuration Error Handling**:
+  - If Stripe API keys are missing or invalid, display error: Payment system not configured. Please contact support.
+  - Prevent payment flow initiation when configuration is invalid
+  - Log configuration errors for admin review
 - **Endpoints**:
   - POST /billing/checkout: Create Stripe Checkout session
   - POST /billing/portal: Create Stripe customer portal session
   - POST /billing/webhook: Handle Stripe webhook events
   - GET /billing/subscription: Get current subscription details
   - POST /billing/cancel: Cancel subscription
+  - GET /billing/config/status: Check payment system configuration status
 
 ### 2.33 Webhook Registration and Management
 - **Functionality**: Webhooks as delivery mechanism for computed facts, not triggers
@@ -498,7 +509,8 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Webhook Payload Requirements**:
   All webhook payloads must include:
   - reproducibilityHash: Reproducibility hash\n  - configVersion: Configuration version
-  - timeWindow: Time window\n  - dataSufficiency: Data sufficiency\n  - signalQuality: Signal quality
+  - timeWindow: Time window
+  - dataSufficiency: Data sufficiency\n  - signalQuality: Signal quality
 - **Guardrails**:
   - **Async + Best-Effort Delivery**: Webhook delivery is asynchronous with best-effort strategy
   - **Retry with Backoff**: Retry with backoff strategy on delivery failure
@@ -565,7 +577,8 @@ funnels:
   - No inferred paths
 - **API Shape**:
   - **Predefined Funnel Templates**: Predefined funnel templates per tier
-  - **Seller-Selectable but Constrained Step Set**: Sellers can select steps but are constrained\n  - **Centralized Config**:\n    - Minimum data requirements
+  - **Seller-Selectable but Constrained Step Set**: Sellers can select steps but are constrained\n  - **Centralized Config**:
+    - Minimum data requirements
     - Step ordering rules
     - Timeouts between steps
 - **Constraints**:
@@ -615,13 +628,67 @@ funnels:
   }
 }
 ```
-\n## 3. Technical Architecture
+\n### 2.36 Admin Tier Reconciliation System
+- **Functionality**: Admin-triggered tier recalculation based on current usage metrics and pricing policy
+- **Core Principle**: Tier is a derived state, not a manual attribute
+- **Mental Model**:
+```\nusage metrics\n+ pricing policy
++ grace rules
+----------------
+= effective tier
+```
+- **Admin Action**:
+  - **Button Label**: Recalculate Tier or Apply Pricing Policy
+  - **Confirmation Text**: This will recompute the user's tier based on current usage and pricing rules. No data will be modified.
+  - **Behavior**: Forces tier computation immediately instead of waiting for scheduled job\n- **Tier State Model**:
+```typescript
+interface TierState {
+  effectiveTier: \"free\" | \"basic\" | \"premium\" | \"business\"
+  pricingVersion: string\n  computedAt: number
+  source: \"scheduled\" | \"admin_reconcile\"
+}\n```
+- **Computation Process**:
+  1. Load current usage metrics (webhooks, API calls, alerts, etc.)
+  2. Load current pricing config
+  3. Compute effective tier based on usage and policy
+  4. Persist:\n     - effectiveTier
+     - tierComputedAt
+     - pricingVersion
+     - source (admin_reconcile)
+  5. Emit event: tier.reconciled
+- **Admin Panel Visibility**:
+  - Current tier\n  - Usage vs limits
+  - Pricing rule that applied
+  - Last reconciliation source
+  - Next scheduled reconciliation\n- **Entitlements System** (Separate from Tier Reconciliation):\n```typescript
+interface Entitlement {
+  type: \"webhook_bonus\" | \"prediction_bonus\"
+  amount: number
+  expiresAt?: number
+  reason: string
+}\n```
+  - Admin panel allows:\n    - Grant entitlement\n    - Set expiration\n    - Attach reason
+  - Entitlements are explicit exceptions, never change tier directly
+- **Endpoints**:
+  - POST /admin/users/:id/reconcile-tier: Trigger tier reconciliation (admin only)
+  - GET /admin/users/:id/tier-state: Get current tier state and computation details (admin only)
+  - POST /admin/users/:id/entitlements: Grant entitlement (admin only)
+  - GET /admin/users/:id/entitlements: List user entitlements (admin only)
+  - DELETE /admin/entitlements/:id: Revoke entitlement (admin only)
+- **Audit Trail**:
+  - All tier reconciliations logged with timestamp, source, and resulting tier
+  - All entitlement grants/revocations logged with reason and admin user
+- **System Invariants**:
+  - Tier is always derived, never manually assigned
+  - Admins trigger computation, not assignment
+  - Entitlements are explicit and auditable
+  - Pricing policy is single source of truth for tier determination
+
+## 3. Technical Architecture
 
 ### 3.1 Data Processing\n- Pre-allocated fixed-size contiguous ring buffers for real-time data storage
-- Circular access using index mod window size
-- Zero per-event reallocation, no per-event object churn
-- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
-- Batch processing support for high-throughput scenarios
+- Circular access using index mod window size\n- Zero per-event reallocation, no per-event object churn
+- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)\n- Batch processing support for high-throughput scenarios
 - Deterministic computation pipeline with fixed random seeds and consistent ordering
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
 
@@ -648,7 +715,9 @@ funnels:
 - Billing and payment endpoints
 - Webhook management endpoints
 - Funnel analysis endpoints
-\n### 3.4 Dashboard Components
+- Admin tier reconciliation endpoints
+
+### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
 - Time series charts with proper timestamp handling:\n  - Internal numeric timestamps
   - Formatted display in tooltips and axis ticks
@@ -668,7 +737,9 @@ funnels:
 - **Task Completion Progress Widget**: Display overall task completion percentage for current user
 - **Assigned Tasks Widget**: Display list of tasks assigned to current user with status indicators and quick update functionality
 - **Navigation in Main Section**: Navigation styled in the main section (no traditional sidebar)
-\n### 3.5 Real-time Integration
+- **Admin Tier Reconciliation Panel**: Display tier state, usage metrics, reconciliation controls (admin only)
+
+### 3.5 Real-time Integration
 - Supabase Realtime for real-time data streaming
 - WebSocket connections for dashboard updates
 - AnomalyAlert component integration
@@ -681,14 +752,14 @@ funnels:
 - Pricing tier API endpoints
 - One-click export functionality integration
 - Configuration snapshot storage per report
+- **Tier Reconciliation System**: Admin-triggered tier recalculation based on usage and policy
 \n### 3.7 Deterministic Reproducibility System
 - Fixed random seed management
 - Deterministic ordering and computation order
 - Reproducibility hash generation for verification
 - Input/output logging for audit trail
 - **System Invariant**: Deterministic guarantee - same inputs always produce same outputs
-
-### 3.8 Centralized Configuration System
+\n### 3.8 Centralized Configuration System
 - **Centralized Config Storage**: Single source of truth for all system parameters
 - **Configuration Parameters**:
   - Window sizes (ring buffer size, analysis window size)
@@ -703,13 +774,13 @@ funnels:
   - Edge case detection thresholds
   - Funnel template definitions
   - Webhook retry policies
+  - Pricing policy rules for tier determination
 - **Dynamic Expressions**: Use dynamic expressions where applicable, avoid magic numbers
 - **Data-Driven Design**: Alert levels, tiers, thresholds all defined by config data, not hardcoded logic
 - **Version Control**: All configuration changes versioned with timestamps
 - **Audit Trail**: Full audit log of configuration changes\n\n### 3.9 Modular and Composable Architecture
 - **Composability Focus**: Design for composability, not reuse
-- **Modular Components**: Separate modules for DSP, caching, alerts, reports, export, embed, config management, insight lifecycle, edge case detection, systemic anomaly detection, authentication, team management, project management, task management, billing, webhook management, funnel analysis
-- **Clean Refactoring**: Eliminate redundancy, centralize common logic
+- **Modular Components**: Separate modules for DSP, caching, alerts, reports, export, embed, config management, insight lifecycle, edge case detection, systemic anomaly detection, authentication, team management, project management, task management, billing, webhook management, funnel analysis, tier reconciliation\n- **Clean Refactoring**: Eliminate redundancy, centralize common logic
 - **Zero Magic Numbers**: All constants defined in centralized config
 \n### 3.10 Data Minimization and Privacy Architecture
 - **Hard Invariant**: No names, emails, addresses in analytics path
@@ -726,8 +797,7 @@ funnels:
   - Premium Tier: 90 days retention
 - **Policy Enforcement**: Retention as policy, not config - enforced at system level
 \n### 3.12 System Invariants (Codified)
-- **Deterministic Guarantee**: Same inputs always produce same outputs
-- **No Silent Recomputation**: All recomputation logged and audited
+- **Deterministic Guarantee**: Same inputs always produce same outputs\n- **No Silent Recomputation**: All recomputation logged and audited
 - **No Hidden Thresholds**: All thresholds defined in centralized config
 - **All Alerts Reference Data Sufficiency**: Every alert must include data sufficiency status
 - **Data Minimization**: No PII in analytics path, seller IDs always opaque, event payloads stripped to behavioral signals only
@@ -736,6 +806,7 @@ funnels:
 - **Systemic Anomaly Separation**: System health issues flagged separately from seller analytics
 - **Webhooks as Side-Effects**: Webhooks are side-effects of insight state changes, never as inputs
 - **Funnel Determinism**: Funnel analysis must be deterministic and reproducible
+- **Tier as Derived State**: Tier is always derived from usage and policy, never manually assigned
 
 ### 3.13 Encryption Strategy
 - **At Rest Encryption**:
@@ -744,8 +815,10 @@ funnels:
   - Usage logs: Encrypted
   - User credentials: Encrypted
   - Team data: Encrypted
-  - Project data: Encrypted\n  - Task data: Encrypted
+  - Project data: Encrypted
+  - Task data: Encrypted
   - Webhook configurations: Encrypted
+  - Tier state and entitlements: Encrypted
 - **In Transit Encryption**:
   - API traffic: TLS everywhere, no exceptions
   - Widget embeds: TLS required\n  - Webhooks: TLS required
@@ -776,9 +849,8 @@ funnels:
 - **Authentication Method**: JWT token-based authentication
 - **Session Management**: Secure session handling with token refresh
 - **Role-Based Access Control (RBAC)**:
-  - Admin role: Full permissions
-  - Member role: Limited permissions
-- **Permission Enforcement**: Server-side permission checks for all protected endpoints
+  - Admin role: Full permissions including tier reconciliation
+  - Member role: Limited permissions\n- **Permission Enforcement**: Server-side permission checks for all protected endpoints
 - **Token Security**: HTTP-only cookies for token storage, CSRF protection
 - **Post-Registration Flow**: Redirect users to dashboard page after successful registration
 \n### 3.16 Team Collaboration Architecture
@@ -792,6 +864,8 @@ funnels:
 - **Tier Access Control**: Automatic feature access based on subscription tier
 - **Payment Security**: PCI DSS compliant payment processing (handled by Stripe)
 - **Payment Notifications**: Display success/failure notifications with 5-second auto-dismiss
+- **Configuration Validation**: Validate Stripe API keys before processing payments
+- **Error Handling**: Clear error messages when payment system is not configured
 
 ### 3.18 Webhook Architecture
 - **Asynchronous Delivery**: Webhook delivery is asynchronous, does not block main analytics flow
@@ -800,13 +874,36 @@ funnels:
 - **Delivery Logging**: Full webhook delivery history and status tracking
 - **Signature Verification**: All webhook payloads verified with HMAC signatures
 - **Rate Limiting**: Rate limits per webhook endpoint to prevent abuse
-
-### 3.19 Funnel Analysis Architecture
+\n### 3.19 Funnel Analysis Architecture
 - **Declarative Definition**: Funnels declaratively defined in centralized config
 - **Template System**: Predefined funnel templates per tier
-- **Step Constraints**: Steps must be temporally monotonic, windows must align\n- **Sufficiency Checks**: Data sufficiency validation per step
+- **Step Constraints**: Steps must be temporally monotonic, windows must align
+- **Sufficiency Checks**: Data sufficiency validation per step
 - **Dropoff Attribution**: Detailed dropoff reason analysis per step
-- **Deterministic Computation**: Funnel analysis must be deterministic and reproducible
+- **Deterministic Computation**: Funnel analysis must be deterministic and reproducible\n
+### 3.20 Tier Reconciliation Architecture\n- **Derived State Model**: Tier is always computed from usage metrics and pricing policy
+- **Computation Triggers**:
+  - Scheduled jobs (periodic automatic reconciliation)
+  - Admin-triggered reconciliation (on-demand)
+- **Usage Metrics Collection**:
+  - Webhook deliveries
+  - API calls
+  - Alert frequency
+  - Prediction requests
+  - Storage usage
+- **Pricing Policy Engine**:
+  - Load current pricing config
+  - Apply grace rules\n  - Compute effective tier
+- **State Persistence**:
+  - effectiveTier
+  - pricingVersion
+  - computedAt
+  - source (scheduled or admin_reconcile)
+- **Entitlements System**:
+  - Separate from tier computation
+  - Explicit exceptions with expiration and reason
+  - Admin-granted and auditable
+- **Audit Trail**: Full logging of all tier changes and reconciliations
 
 ## 4. System Characteristics
 - Lightweight and elegant design
@@ -844,12 +941,13 @@ funnels:
 - Role-based team collaboration with Admin/Member roles
 - Real-time task management and synchronization
 - Dashboard task analytics with completion progress and assigned tasks overview
-- Integrated Stripe payment processing with success/failure notifications
+- Integrated Stripe payment processing with configuration validation and error handling
 - Webhook registration and management as side-effects of insight state changes
 - Declarative, deterministic, reproducible funnel analysis
 - Navigation design in main section (no traditional sidebar)
 - Landing page design inspired by modern aesthetics similar to nfinitepaper.com
 - Webhook volume mapping directly into pricing tiers for transparent monetization
+- Admin tier reconciliation system with derived state model and entitlements
 \n## 5. System Charter
 
 ### 5.1 Purpose and Scope
@@ -881,10 +979,12 @@ Seller analytics and systemic anomalies are strictly separated. System health is
 #### 5.2.9 Funnel Determinism
 Funnel analysis must be deterministic and reproducible. Funnels are declaratively defined in centralized config, steps must be temporally monotonic, and windows must align. This principle ensures reliability and auditability of funnel analysis.
 
+#### 5.2.10 Tier as Derived State
+Pricing tier is a derived state, not a manual attribute. Tier is always computed from usage metrics, pricing policy, and grace rules. Admins trigger computation, not assignment. This principle ensures pricing honesty, explicit exceptions, and clean audits.
+
 ### 5.3 System Invariants
 
-The following invariants are codified and enforced at the system level. Violations of these invariants constitute system failures and must be prevented by design:
-
+The following invariants are codified and enforced at the system level. Violations of these invariants constitute system failures and must be prevented by design:\n
 1. **Deterministic Guarantee**: Same inputs always produce same outputs.\n2. **No Silent Recomputation**: All recomputation is logged and audited.
 3. **No Hidden Thresholds**: All thresholds are defined in centralized config.
 4. **All Alerts Reference Data Sufficiency**: Every alert must include data sufficiency status.
@@ -894,6 +994,7 @@ The following invariants are codified and enforced at the system level. Violatio
 8. **Systemic Anomaly Separation**: System health issues are flagged separately from seller analytics.
 9. **Webhooks as Side-Effects**: Webhooks are side-effects of insight state changes, never as inputs.
 10. **Funnel Determinism**: Funnel analysis must be deterministic and reproducible.
+11. **Tier as Derived State**: Tier is always derived from usage and policy, never manually assigned.
 
 ### 5.4 Governance and Change Management
 
@@ -911,7 +1012,7 @@ We enforce strict data minimization as a core architectural principle. No person
 
 ### 6.3 Encryption and Data Protection
 
-We employ a comprehensive encryption strategy to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, usage logs, user credentials, team data, project data, task data, and webhook configurations are encrypted using industry-standard encryption algorithms.
+We employ a comprehensive encryption strategy to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, usage logs, user credentials, team data, project data, task data, webhook configurations, and tier state are encrypted using industry-standard encryption algorithms.
 - **In Transit**: All API traffic, widget embeds, webhooks, and real-time connections are encrypted using TLS without exception.
 - **Secrets and Keys**: API keys, webhook secrets, embed tokens, and Stripe API keys are encrypted, rotatable, scoped, and revocable. Automatic key rotation policies are enforced.
 \nDerived analytics, aggregated metrics, and scores are not encrypted as they are aggregated and non-sensitive by design.
@@ -950,7 +1051,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 
 **Attribution**: All anomaly outputs include root cause breakdown showing percentage contribution of each component to overall anomaly score.
 
-### 7.2 Confidence\n
+### 7.2 Confidence
+
 **Definition**: Confidence is a measure of the system's certainty in its outputs, expressed as a qualitative or quantitative metric. Confidence depends on data sufficiency, signal quality, and computational stability.
 
 **Factors Affecting Confidence**:
@@ -1008,8 +1110,7 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Definition**: An insight lifecycle state is the current state of an automatically generated insight. Insights transition between states based on time, data updates, and user feedback.
 
 **States**:
-- **Generated**: Newly created insight.
-- **Confirmed**: Insight validated by subsequent data or user action.
+- **Generated**: Newly created insight.\n- **Confirmed**: Insight validated by subsequent data or user action.
 - **Expired**: Insight no longer relevant due to time passage.
 - **Superseded**: Insight replaced by newer, more accurate insight.
 
@@ -1044,3 +1145,35 @@ This glossary defines the precise meaning of key terms used throughout the syste
 \n**Output Requirements**: Funnel outputs always include dropoff attribution, per-step sufficiency, and confidence messaging.
 
 **Templates**: Predefined funnel templates per tier, seller-selectable but constrained step set.
+
+### 7.12 Tier
+
+**Definition**: Tier is a derived state representing the user's current pricing level, computed from usage metrics, pricing policy, and grace rules. Tier is never manually assigned.
+
+**Computation Model**:
+```\nusage metrics
++ pricing policy
++ grace rules
+----------------
+= effective tier
+```
+
+**Tier Values**: free, basic, premium, business\n
+**Computation Triggers**:
+- Scheduled jobs (periodic automatic reconciliation)
+- Admin-triggered reconciliation (on-demand)
+\n**State Persistence**: effectiveTier, pricingVersion, computedAt, source
+
+**Philosophy**: Tier is always derived, never manually assigned. Admins trigger computation, not assignment. This ensures pricing honesty, explicit exceptions, and clean audits.\n
+### 7.13 Entitlement
+
+**Definition**: An entitlement is an explicit exception granting additional resources or capabilities beyond the user's tier limits. Entitlements are separate from tier computation.\n
+**Entitlement Types**:
+- webhook_bonus: Additional webhook delivery quota
+- prediction_bonus: Additional prediction request quota
+\n**Attributes**:
+- type: Entitlement type\n- amount: Bonus amount
+- expiresAt: Optional expiration timestamp
+- reason: Explanation for granting entitlement
+
+**Purpose**: Entitlements allow admins to grant explicit exceptions while keeping tier computation honest and auditable. Entitlements never change tier directly.

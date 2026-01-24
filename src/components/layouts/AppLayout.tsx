@@ -1,7 +1,7 @@
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Upload, Users, Menu, Activity, Webhook, Filter } from 'lucide-react';
+import { LayoutDashboard, Upload, Users, Menu, Activity, Webhook, Filter, Shield } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { ModeToggle } from '@/components/common/ModeToggle';
 
@@ -34,6 +34,11 @@ const menuItems = [
     title: 'Funnels',
     icon: Filter,
     path: '/funnels',
+  },
+  {
+    title: 'Admin Panel',
+    icon: Shield,
+    path: '/admin',
   },
 ];
 
