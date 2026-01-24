@@ -28,6 +28,16 @@ import type {
   DegeneratePattern,
   SystemicAnomaly,
   SignalQualityRule,
+  WebhookRegistration,
+  WebhookEventType,
+  WebhookPayload,
+  WebhookDelivery,
+  WebhookDeadLetter,
+  WebhookTestResult,
+  FunnelTemplate,
+  FunnelConfig,
+  FunnelStep,
+  FunnelResult,
 } from '@/types/analytics';
 
 const CACHE_DURATION = 30000;
@@ -643,5 +653,280 @@ export const analyticsApi = {
         supabase.removeChannel(channel);
       },
     };
+  },
+
+  // Webhook Management
+  async getWebhooks(sellerId: string): Promise<WebhookRegistration[]> {
+    const { data, error } = await supabase
+      .from('webhook_registrations')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as WebhookRegistration[] : [];
+  },
+
+  async createWebhook(
+    sellerId: string,
+    url: string,
+    eventTypes: WebhookEventType[],
+    metadata?: Record<string, unknown>
+  ): Promise<WebhookRegistration> {
+    // Generate secret for HMAC
+    const secret = `whsec_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+    const { data, error } = await supabase
+      .from('webhook_registrations')
+      .insert([{
+        seller_id: sellerId,
+        url,
+        event_types: eventTypes,
+        secret,
+        enabled: true,
+        metadata: metadata || {},
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as WebhookRegistration;
+  },
+
+  async updateWebhook(
+    webhookId: string,
+    updates: Partial<Pick<WebhookRegistration, 'url' | 'event_types' | 'enabled' | 'metadata'>>
+  ): Promise<WebhookRegistration> {
+    const { data, error } = await supabase
+      .from('webhook_registrations')
+      .update(updates as never)
+      .eq('id', webhookId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as WebhookRegistration;
+  },
+
+  async deleteWebhook(webhookId: string): Promise<void> {
+    const { error } = await supabase
+      .from('webhook_registrations')
+      .delete()
+      .eq('id', webhookId);
+
+    if (error) throw error;
+  },
+
+  async testWebhook(webhookId: string): Promise<WebhookTestResult> {
+    const startTime = Date.now();
+    
+    try {
+      const { data: webhook } = await supabase
+        .from('webhook_registrations')
+        .select('*')
+        .eq('id', webhookId)
+        .single();
+
+      if (!webhook) {
+        throw new Error('Webhook not found');
+      }
+
+      const webhookData = webhook as unknown as WebhookRegistration;
+
+      // Send test payload
+      const testPayload: WebhookPayload = {
+        event_type: 'alert_triggered',
+        seller_id: webhookData.seller_id,
+        timestamp: Date.now(),
+        data: { test: true, message: 'This is a test webhook delivery' },
+        reproducibility_hash: 'test_hash',
+        config_version: 'test_v1',
+        time_window: { start: Date.now() - 3600000, end: Date.now() },
+        data_sufficiency: 'sufficient',
+        signal_quality: 0.95,
+      };
+
+      const { data, error } = await supabase.functions.invoke('webhook-delivery', {
+        body: {
+          webhook_id: webhookId,
+          event_type: 'alert_triggered',
+          payload: testPayload,
+        },
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (error) {
+        return {
+          success: false,
+          response_time_ms: responseTime,
+          error: error.message,
+        };
+      }
+
+      return {
+        success: data.success,
+        status_code: 200,
+        response_time_ms: responseTime,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        response_time_ms: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  },
+
+  async getWebhookDeliveries(webhookId: string, limit = 50): Promise<WebhookDelivery[]> {
+    const { data, error } = await supabase
+      .from('webhook_deliveries')
+      .select('*')
+      .eq('webhook_id', webhookId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as WebhookDelivery[] : [];
+  },
+
+  async getWebhookDeadLetters(webhookId: string): Promise<WebhookDeadLetter[]> {
+    const { data, error } = await supabase
+      .from('webhook_dead_letter')
+      .select('*')
+      .eq('webhook_id', webhookId)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as WebhookDeadLetter[] : [];
+  },
+
+  async retryWebhookDelivery(deliveryId: string): Promise<{ success: boolean }> {
+    const { data: delivery } = await supabase
+      .from('webhook_deliveries')
+      .select('*')
+      .eq('id', deliveryId)
+      .single();
+
+    if (!delivery) {
+      throw new Error('Delivery not found');
+    }
+
+    const deliveryData = delivery as unknown as WebhookDelivery;
+
+    const { data, error } = await supabase.functions.invoke('webhook-delivery', {
+      body: {
+        webhook_id: deliveryData.webhook_id,
+        event_type: deliveryData.event_type,
+        payload: deliveryData.payload,
+      },
+    });
+
+    if (error) throw error;
+    return { success: data.success };
+  },
+
+  // Funnel Analysis
+  async getFunnelTemplates(tier?: string): Promise<FunnelTemplate[]> {
+    let query = supabase.from('funnel_templates').select('*');
+    
+    if (tier) {
+      query = query.eq('tier', tier);
+    }
+
+    const { data, error } = await query.order('tier', { ascending: true });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as FunnelTemplate[] : [];
+  },
+
+  async getFunnelConfigs(sellerId: string): Promise<FunnelConfig[]> {
+    const { data, error } = await supabase
+      .from('funnel_configs')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as FunnelConfig[] : [];
+  },
+
+  async createFunnelConfig(
+    sellerId: string,
+    templateId: string,
+    name: string,
+    windowHours?: number,
+    customSteps?: FunnelStep[]
+  ): Promise<FunnelConfig> {
+    const { data, error } = await supabase
+      .from('funnel_configs')
+      .insert([{
+        seller_id: sellerId,
+        template_id: templateId,
+        name,
+        enabled: true,
+        custom_steps: customSteps || null,
+        window_hours: windowHours || 24,
+      } as never])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as FunnelConfig;
+  },
+
+  async updateFunnelConfig(
+    funnelConfigId: string,
+    updates: Partial<Pick<FunnelConfig, 'name' | 'enabled' | 'custom_steps' | 'window_hours'>>
+  ): Promise<FunnelConfig> {
+    const { data, error } = await supabase
+      .from('funnel_configs')
+      .update(updates as never)
+      .eq('id', funnelConfigId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as FunnelConfig;
+  },
+
+  async deleteFunnelConfig(funnelConfigId: string): Promise<void> {
+    const { error } = await supabase
+      .from('funnel_configs')
+      .delete()
+      .eq('id', funnelConfigId);
+
+    if (error) throw error;
+  },
+
+  async analyzeFunnel(
+    funnelConfigId: string,
+    windowHours?: number,
+    forceRecompute?: boolean
+  ): Promise<FunnelResult> {
+    const { data, error } = await supabase.functions.invoke(
+      `funnel-analysis?funnelConfigId=${funnelConfigId}&windowHours=${windowHours || 24}&forceRecompute=${forceRecompute || false}`,
+      { method: 'GET' }
+    );
+
+    if (error) {
+      console.error('Funnel analysis error:', error);
+      throw new Error('Failed to analyze funnel');
+    }
+
+    return data as FunnelResult;
+  },
+
+  async getFunnelResults(funnelConfigId: string, limit = 10): Promise<FunnelResult[]> {
+    const { data, error } = await supabase
+      .from('funnel_results')
+      .select('*')
+      .eq('funnel_config_id', funnelConfigId)
+      .order('computed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return Array.isArray(data) ? data as FunnelResult[] : [];
   },
 };

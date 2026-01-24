@@ -353,3 +353,159 @@ export interface SignalQualityRule {
   enabled: boolean;
   created_at: string;
 }
+
+// Webhook Types
+export type WebhookEventType = 
+  | 'anomaly_detected'
+  | 'alert_triggered'
+  | 'prediction_updated'
+  | 'insight_state_changed'
+  | 'weekly_report_ready'
+  | 'pricing_tier_changed';
+
+export interface WebhookRegistration {
+  id: string;
+  seller_id: string;
+  url: string;
+  event_types: WebhookEventType[];
+  secret: string;
+  enabled: boolean;
+  retry_config: {
+    maxRetries: number;
+    backoffMs: number[];
+  };
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookPayload {
+  event_type: WebhookEventType;
+  seller_id: string;
+  timestamp: number;
+  data: Record<string, unknown>;
+  reproducibility_hash: string;
+  config_version: string;
+  time_window: {
+    start: number;
+    end: number;
+  };
+  data_sufficiency: 'insufficient' | 'minimal' | 'sufficient' | 'high';
+  signal_quality: number;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: WebhookEventType;
+  payload: WebhookPayload;
+  reproducibility_hash: string;
+  config_version: string;
+  time_window: Record<string, unknown>;
+  data_sufficiency: string;
+  signal_quality: number;
+  status: 'pending' | 'success' | 'failed' | 'dead_letter';
+  attempts: number;
+  last_attempt_at: string | null;
+  response_code: number | null;
+  response_body: string | null;
+  error_message: string | null;
+  created_at: string;
+  delivered_at: string | null;
+}
+
+export interface WebhookDeadLetter {
+  id: string;
+  delivery_id: string;
+  webhook_id: string;
+  event_type: WebhookEventType;
+  payload: WebhookPayload;
+  final_error: string;
+  attempts: number;
+  created_at: string;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+}
+
+export interface WebhookTestResult {
+  success: boolean;
+  status_code?: number;
+  response_time_ms: number;
+  error?: string;
+}
+
+// Funnel Types
+export interface FunnelStep {
+  type: Event['type'];
+  order: number;
+  label: string;
+}
+
+export interface FunnelTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  tier: 'free' | 'basic' | 'pro' | 'enterprise';
+  steps: FunnelStep[];
+  min_data_points: number;
+  max_step_timeout_ms: number;
+  window_alignment: 'hour' | 'day' | 'week';
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface FunnelConfig {
+  id: string;
+  seller_id: string;
+  template_id: string;
+  name: string;
+  enabled: boolean;
+  custom_steps: FunnelStep[] | null;
+  window_hours: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FunnelStepResult {
+  step: number;
+  type: Event['type'];
+  label: string;
+  count: number;
+  dropoff: number;
+  dropoff_rate: number;
+  sufficiency: 'insufficient' | 'minimal' | 'sufficient' | 'high';
+  avg_time_from_previous_ms: number | null;
+}
+
+export interface FunnelDropOffAttribution {
+  from_step: number;
+  to_step: number;
+  count: number;
+  rate: number;
+  reasons: Array<{
+    reason: string;
+    contribution: number;
+  }>;
+}
+
+export interface FunnelResult {
+  id: string;
+  funnel_config_id: string;
+  seller_id: string;
+  window_start: string;
+  window_end: string;
+  total_entries: number;
+  step_results: FunnelStepResult[];
+  drop_off_attribution: FunnelDropOffAttribution[];
+  confidence: number;
+  data_sufficiency: 'insufficient' | 'minimal' | 'sufficient' | 'high';
+  reproducibility_hash: string;
+  config_version: string;
+  computed_at: string;
+}
+
+export interface FunnelAnalysisRequest {
+  funnel_config_id: string;
+  window_hours?: number;
+  force_recompute?: boolean;
+}

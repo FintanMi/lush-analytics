@@ -5,6 +5,8 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const EventIngestion = lazy(() => import('./pages/EventIngestion'));
 const SellerManagement = lazy(() => import('./pages/SellerManagement'));
+const WebhookManagement = lazy(() => import('./pages/WebhookManagement'));
+const FunnelAnalysis = lazy(() => import('./pages/FunnelAnalysis'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 
 interface RouteConfig {
@@ -34,6 +36,16 @@ const routes: RouteConfig[] = [
     name: 'Seller Management',
     path: '/sellers',
     element: <SellerManagement />
+  },
+  {
+    name: 'Webhook Management',
+    path: '/webhooks',
+    element: <WebhookManagement />
+  },
+  {
+    name: 'Funnel Analysis',
+    path: '/funnels',
+    element: <FunnelAnalysis />
   },
   {
     name: 'Payment Success',

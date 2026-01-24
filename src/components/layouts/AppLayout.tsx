@@ -1,21 +1,7 @@
-import { 
-  SidebarProvider, 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarMenu, 
-  SidebarMenuButton, 
-  SidebarMenuItem, 
-  SidebarHeader, 
-  SidebarFooter, 
-  SidebarTrigger,
-  SidebarInset
-} from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Upload, Users, Menu, Activity } from 'lucide-react';
+import { LayoutDashboard, Upload, Users, Menu, Activity, Webhook, Filter } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 import { ModeToggle } from '@/components/common/ModeToggle';
 
@@ -38,6 +24,16 @@ const menuItems = [
     title: 'Sellers',
     icon: Users,
     path: '/sellers',
+  },
+  {
+    title: 'Webhooks',
+    icon: Webhook,
+    path: '/webhooks',
+  },
+  {
+    title: 'Funnels',
+    icon: Filter,
+    path: '/funnels',
   },
 ];
 
