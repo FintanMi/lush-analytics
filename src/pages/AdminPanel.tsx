@@ -59,12 +59,14 @@ export default function AdminPanel() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      // Get all users (this would need proper admin authentication in production)
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      // Get all users via edge function (requires service role)
+      const { data, error } = await supabase.functions.invoke('admin-list-users', {
+        method: 'GET',
+      });
       
-      if (authError) throw authError;
+      if (error) throw error;
 
-      const mappedUsers: AuthUser[] = (authUsers.users || []).map(u => ({
+      const mappedUsers: AuthUser[] = (data.users || []).map((u: any) => ({
         id: u.id,
         email: u.email || 'No email',
         created_at: u.created_at

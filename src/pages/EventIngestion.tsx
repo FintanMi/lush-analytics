@@ -4,6 +4,12 @@ import { EventForm } from '@/components/analytics/EventForm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import type { Seller, Event } from '@/types/analytics';
 
 export default function EventIngestion() {
@@ -110,24 +116,28 @@ export default function EventIngestion() {
           <CardTitle>API Documentation</CardTitle>
           <CardDescription>How to integrate with the analytics API</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2">POST /events</h3>
-            <p className="text-sm text-muted-foreground mb-2">Submit a new event</p>
-            <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="post-events">
+              <AccordionTrigger>POST /events - Submit a new event</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground mb-2">Submit a new event</p>
+                <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "sellerId": "uuid",
   "timestamp": 1234567890000,
   "type": "SALE" | "CLICK" | "VIEW",
   "value": 99.99
 }`}
-            </pre>
-          </div>
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
 
-          <div>
-            <h3 className="font-semibold mb-2">GET /metrics/:seller/anomalies</h3>
-            <p className="text-sm text-muted-foreground mb-2">Get anomaly detection score</p>
-            <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+            <AccordionItem value="get-anomalies">
+              <AccordionTrigger>GET /metrics/:seller/anomalies - Get anomaly detection score</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground mb-2">Get anomaly detection score</p>
+                <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "anomalyScore": 0.85,
   "metrics": {
@@ -136,24 +146,28 @@ export default function EventIngestion() {
     "dataPoints": 512
   }
 }`}
-            </pre>
-          </div>
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
 
-          <div>
-            <h3 className="font-semibold mb-2">GET /metrics/:seller/predictions</h3>
-            <p className="text-sm text-muted-foreground mb-2">Get sales predictions</p>
-            <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+            <AccordionItem value="get-predictions">
+              <AccordionTrigger>GET /metrics/:seller/predictions - Get sales predictions</AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm text-muted-foreground mb-2">Get sales predictions</p>
+                <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "predictions": [
     {
       "timestamp": 1234567890000,
       "predicted": 150.5,
-      "confidence": 0.85
+      "confidence": 0.92
     }
   ]
 }`}
-            </pre>
-          </div>
+                </pre>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
     </div>

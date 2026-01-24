@@ -54,7 +54,6 @@ function SidebarNav() {
           </div>
           <div>
             <h2 className="font-bold text-lg tracking-tight">Lush Analytics</h2>
-            <p className="text-xs text-muted-foreground">Real-time Insights</p>
           </div>
         </div>
       </SidebarHeader>
@@ -126,6 +125,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               </div>
               <div className="hidden sm:block">
                 <h2 className="font-bold text-base tracking-tight">Lush Analytics</h2>
+                <p className="text-xs text-muted-foreground">Real-time Insights</p>
               </div>
             </div>
 
