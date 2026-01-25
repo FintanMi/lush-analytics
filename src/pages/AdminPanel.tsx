@@ -59,9 +59,19 @@ export default function AdminPanel() {
   const loadUsers = async () => {
     setLoading(true);
     try {
+      // Get current session for authorization
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('You must be logged in to access the admin panel');
+      }
+
       // Get all users via edge function (requires service role)
       const { data, error } = await supabase.functions.invoke('admin-list-users', {
         method: 'GET',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
       
       if (error) throw error;
@@ -100,8 +110,18 @@ export default function AdminPanel() {
   const handleReconcileTier = async (userId: string) => {
     setReconciling(userId);
     try {
+      // Get current session for authorization
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('You must be logged in to perform this action');
+      }
+
       const { data, error } = await supabase.functions.invoke(`reconcile-tier/${userId}`, {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) throw error;
