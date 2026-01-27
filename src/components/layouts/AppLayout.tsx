@@ -1,9 +1,11 @@
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Upload, Users, Menu, Activity, Webhook, Filter, Shield } from 'lucide-react';
-import { Link, useLocation } from 'react-router';
+import { LayoutDashboard, Upload, Users, Menu, LogOut, Webhook, Filter, Shield } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ModeToggle } from '@/components/common/ModeToggle';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -44,6 +46,30 @@ const menuItems = [
 
 function SidebarNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+
+      toast({
+        title: 'Logged out successfully',
+        description: 'You have been logged out of your account.',
+      });
+
+      // Redirect to landing page
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: 'Logout failed',
+        description: error.message || 'Failed to log out. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <>
@@ -82,7 +108,15 @@ function SidebarNav() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Logout</span>
+        </Button>
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">© 2026 Lush Analytics</p>
           <ModeToggle />
@@ -94,14 +128,11 @@ function SidebarNav() {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full flex-col">
         {/* Top Navigation Bar */}
         <nav className="sticky top-0 z-50 glass border-b border-border/50">
           <div className="flex h-16 items-center gap-4 px-6">
-            {/* Desktop sidebar trigger - uses enhanced toggle functionality */}
-            <SidebarTrigger className="hidden lg:flex" />
-
             {/* Mobile menu */}
             <div className="lg:hidden">
               <Sheet>
@@ -130,13 +161,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             <div className="flex-1" />
-            <ModeToggle />
           </div>
         </nav>
 
         {/* Main Content Area with Sidebar */}
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar collapsible="icon" className="hidden lg:block border-r border-border">
+          <Sidebar collapsible="none" className="hidden lg:flex border-r border-border">
             <SidebarNav />
           </Sidebar>
           <main className="flex-1 overflow-auto scrollbar-thin gradient-bg">
