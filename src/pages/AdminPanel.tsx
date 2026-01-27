@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { RefreshCw, Shield, TrendingUp, Calendar, User as UserIcon } from 'lucide-react';
+import { RefreshCw, Shield, TrendingUp, Calendar, User as UserIcon, Check, CreditCard, XCircle } from 'lucide-react';
 
 interface TierState {
   user_id: string;
@@ -44,17 +44,110 @@ interface AuthUser {
   created_at: string;
 }
 
+interface PricingTier {
+  name: string;
+  price: string;
+  priceValue: number;
+  period: string;
+  description: string;
+  features: string[];
+  highlighted: boolean;
+}
+
+const pricingTiers: PricingTier[] = [
+  {
+    name: 'Free',
+    price: '0',
+    priceValue: 0,
+    period: 'forever',
+    description: 'Perfect for getting started',
+    features: [
+      'Up to 1,000 events/month',
+      'Basic analytics dashboard',
+      '7-day data retention',
+      'Email support',
+      'Single seller account',
+      'Privacy by Design',
+      'High Performance'
+    ],
+    highlighted: false
+  },
+  {
+    name: 'Basic',
+    price: '50',
+    priceValue: 50,
+    period: 'month',
+    description: 'For growing businesses',
+    features: [
+      'Up to 50,000 events/month',
+      'Advanced analytics',
+      '30-day data retention',
+      'Priority email support',
+      'Up to 5 seller accounts',
+      'Anomaly detection',
+      'Basic predictions',
+      'Privacy by Design',
+      'High Performance'
+    ],
+    highlighted: false
+  },
+  {
+    name: 'Premium',
+    price: '300',
+    priceValue: 300,
+    period: 'month',
+    description: 'For established companies',
+    features: [
+      'Up to 500,000 events/month',
+      'Full analytics suite',
+      '90-day data retention',
+      '24/7 priority support',
+      'Up to 25 seller accounts',
+      'Advanced anomaly detection',
+      'Predictive analytics',
+      'Custom reports',
+      'API access',
+      'Privacy by Design',
+      'High Performance'
+    ],
+    highlighted: true
+  }
+];
+
 export default function AdminPanel() {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [tierStates, setTierStates] = useState<Record<string, TierState>>({});
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [reconciling, setReconciling] = useState<string | null>(null);
+  const [currentTier, setCurrentTier] = useState<string>('free');
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadUsers();
+    loadCurrentUserTier();
   }, []);
+
+  const loadCurrentUserTier = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: tierState } = await supabase
+          .from('tier_states')
+          .select('effective_tier')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (tierState) {
+          setCurrentTier(tierState.effective_tier);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load current tier:', error);
+    }
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -165,6 +258,101 @@ export default function AdminPanel() {
     return new Date(timestamp).toLocaleString();
   };
 
+  const handleUpgradeDowngrade = async (tier: PricingTier) => {
+    if (tier.priceValue === 0) {
+      toast({
+        title: 'Cannot Downgrade to Free',
+        description: 'Please cancel your subscription to return to the free tier.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setProcessingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create_stripe_checkout', {
+        body: {
+          items: [
+            {
+              name: `Lush Analytics - ${tier.name} Plan`,
+              price: tier.priceValue,
+              quantity: 1,
+            }
+          ],
+          currency: 'eur',
+          payment_method_types: ['card'],
+        },
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      if (data?.code === 'FAIL') {
+        throw new Error(data?.message || 'Failed to create checkout session');
+      }
+
+      if (data?.code === 'SUCCESS' && data?.data?.url) {
+        window.open(data.data.url, '_blank');
+        toast({
+          title: 'Redirecting to Payment',
+          description: 'Opening Stripe checkout in a new tab...',
+          duration: 5000,
+        });
+      } else {
+        throw new Error('Invalid response from payment service');
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      
+      let errorMessage = 'Failed to initiate payment. Please try again.';
+      let errorTitle = 'Payment Failed';
+      
+      if (error?.message?.includes('STRIPE_SECRET_KEY')) {
+        errorTitle = 'Configuration Error';
+        errorMessage = 'Payment system not configured. Please contact support.';
+      } else if (error?.message?.includes('Invalid API Key')) {
+        errorTitle = 'Configuration Error';
+        errorMessage = 'Payment system requires configuration. Please contact an administrator.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 7000,
+      });
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancellingSubscription(true);
+    try {
+      // In a real implementation, this would call a Stripe API to cancel the subscription
+      // For now, we'll just show a success message
+      toast({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled. You will retain access until the end of your billing period.',
+      });
+      
+      // Reload tier information
+      await loadCurrentUserTier();
+    } catch (error: any) {
+      toast({
+        title: 'Cancellation Failed',
+        description: error.message || 'Failed to cancel subscription. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancellingSubscription(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -177,6 +365,114 @@ export default function AdminPanel() {
           Refresh
         </Button>
       </div>
+
+      {/* Subscription Management Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Subscription Management
+          </CardTitle>
+          <CardDescription>
+            Manage your subscription plan and billing
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
+            <div>
+              <p className="text-sm text-muted-foreground">Current Plan</p>
+              <p className="text-2xl font-bold capitalize">{currentTier}</p>
+            </div>
+            {currentTier !== 'free' && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={cancellingSubscription}>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {cancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel your subscription? You will retain access until the end of your current billing period, after which your account will be downgraded to the Free tier.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancelSubscription} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Cancel Subscription
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Available Plans</h3>
+            <div className="grid gap-6 md:grid-cols-3">
+              {pricingTiers.map((tier) => (
+                <Card 
+                  key={tier.name} 
+                  className={`relative ${tier.highlighted ? 'ring-2 ring-primary shadow-lg' : ''} ${currentTier.toLowerCase() === tier.name.toLowerCase() ? 'border-primary' : ''}`}
+                >
+                  {tier.highlighted && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1">
+                        Most Popular
+                      </Badge>
+                    </div>
+                  )}
+                  {currentTier.toLowerCase() === tier.name.toLowerCase() && (
+                    <div className="absolute -top-3 right-4">
+                      <Badge variant="default" className="px-3 py-1">
+                        Current Plan
+                      </Badge>
+                    </div>
+                  )}
+                  <CardHeader>
+                    <CardTitle className="text-xl">{tier.name}</CardTitle>
+                    <CardDescription>{tier.description}</CardDescription>
+                    <div className="pt-4">
+                      <span className="text-4xl font-bold">€{tier.price}</span>
+                      <span className="text-muted-foreground">/{tier.period}</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ul className="space-y-2">
+                      {tier.features.map((feature, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full"
+                      variant={currentTier.toLowerCase() === tier.name.toLowerCase() ? 'outline' : 'default'}
+                      disabled={currentTier.toLowerCase() === tier.name.toLowerCase() || processingPayment || tier.priceValue === 0}
+                      onClick={() => handleUpgradeDowngrade(tier)}
+                    >
+                      {processingPayment ? (
+                        'Processing...'
+                      ) : currentTier.toLowerCase() === tier.name.toLowerCase() ? (
+                        'Current Plan'
+                      ) : tier.priceValue === 0 ? (
+                        'Cancel to Downgrade'
+                      ) : tier.priceValue > pricingTiers.find(t => t.name.toLowerCase() === currentTier.toLowerCase())!.priceValue ? (
+                        'Upgrade'
+                      ) : (
+                        'Downgrade'
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

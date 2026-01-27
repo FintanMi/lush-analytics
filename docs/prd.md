@@ -10,6 +10,7 @@ The application now includes a redesigned modern frontend interface with navigat
 
 **New Features**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, Stripe payment integration, and admin tier reconciliation system.
 
+**Performance Enhancements**: Lazy loading implementation for all pages, smooth page transitions with subtle animations using motion library.\n
 ## 2. Core Functionality
 
 ### 2.1 Event Ingestion
@@ -28,8 +29,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Processing Logic**: Efficiently process multiple events in a single request to reduce overhead, using same ring buffer mechanism\n\n### 2.3 Ring Buffer Management
 - Pre-allocated fixed-size contiguous arrays (window size defined in centralized config)
 - Circular access using index mod window size
-- Zero per-event reallocation
-- No per-event object churn
+- Zero per-event reallocation\n- No per-event object churn
 - Supports real-time FIR, FFT, and HFD computation
 - **Clear Time Window Definition**: Expose time window parameters (start timestamp, end timestamp, window size) in API responses and UI
 
@@ -84,7 +84,8 @@ The application now includes a redesigned modern frontend interface with navigat
   - Confirmed: Insight validated by subsequent data or user action
   - Expired: Insight no longer relevant due to time passage
   - Superseded: Insight replaced by newer, more accurate insight
-- **State Transitions**: Automatic state management based on time, data updates, and user feedback\n- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
+- **State Transitions**: Automatic state management based on time, data updates, and user feedback
+- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
 \n### 2.9 Anomaly Attribution (Root Cause Breakdown)
 - **Functionality**: Explain anomaly score composition\n- **Components**:
   - FFT peak contribution percentage
@@ -102,8 +103,7 @@ The application now includes a redesigned modern frontend interface with navigat
 ### 2.11 Seller Health Score (Composite Index)
 - **Endpoint**: GET /metrics/:seller/health
 - **Functionality**: Calculate composite seller health score\n- **Scoring Factors**:
-  - Volatility level
-  - Anomaly frequency
+  - Volatility level\n  - Anomaly frequency
   - Predictive risk assessment
   - Data consistency metrics
 - **Response Format**: { healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: \"...\", configVersion: \"...\", signalQuality: {...} }
@@ -128,8 +128,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Benefits**: Optimize system resources while maintaining accuracy
 
 ### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration
-- **Functionality**: Real-time dashboard updates with AnomalyAlert component
+- **Technology**: Supabase Realtime integration\n- **Functionality**: Real-time dashboard updates with AnomalyAlert component
 - **Features**:
   - Real-time anomaly notifications
   - Real-time metrics updates
@@ -191,8 +190,7 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Response Format**:
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time window definition
-  - dataSufficiency: Data sufficiency metrics
-  - reproducibilityHash: Hash for verification
+  - dataSufficiency: Data sufficiency metrics\n  - reproducibilityHash: Hash for verification
   - confidenceMessage: Confidence and sufficiency-aware messaging
   - configVersion: Configuration version used
   - signalQuality: Signal quality assessment
@@ -297,17 +295,21 @@ The application now includes a redesigned modern frontend interface with navigat
   - Dialog can be closed by clicking anywhere outside the dialog
 - **Responsive Design**: Fully responsive layout optimized for desktop and mobile devices, inspired by design aesthetics similar to nfinitepaper.com
 - **Styling**: Consistent with existing application styles and design system
+- **Performance Optimization**: Lazy loading applied to landing page sections and components
 \n### 2.27 User Authentication System
-- **Functionality**: Secure user authentication and authorization\n- **Features**:
+- **Functionality**: Secure user authentication and authorization
+- **Features**:
   - User registration with email and password
   - User login with email and password
   - Password reset functionality
-  - Session management\n  - JWT token-based authentication
+  - Session management
+  - JWT token-based authentication
   - **Post-Registration Redirect**: After successful registration, users are redirected to dashboard page
 - **Endpoints**:\n  - POST /auth/register: User registration
   - POST /auth/login: User login\n  - POST /auth/logout: User logout
   - POST /auth/reset-password: Password reset request
-  - POST /auth/confirm-reset: Confirm password reset\n\n### 2.28 Team Management System
+  - POST /auth/confirm-reset: Confirm password reset
+\n### 2.28 Team Management System
 - **Functionality**: Team collaboration with role-based access control
 - **Roles**:
   - **Admin**: Full team management permissions
@@ -601,13 +603,13 @@ funnels:
   - reproducibilityHash: Reproducibility hash
   - configVersion: Configuration version
   - signalQuality: Signal quality assessment
-
-### 2.35 Webhook Volume Mapping to Pricing Tiers
+\n### 2.35 Webhook Volume Mapping to Pricing Tiers
 - **Conceptual Model**: Webhook usage treated as downstream compute amplification
 - **Metrics Tracked** (per seller, per month):
   - totalDeliveries: Total webhook deliveries
   - successfulDeliveries: Successful webhook deliveries
-  - failedDeliveries: Failed webhook deliveries\n  - uniqueEventTypes: Number of unique event types
+  - failedDeliveries: Failed webhook deliveries
+  - uniqueEventTypes: Number of unique event types
   - peakHourlyRate: Peak hourly delivery rate
 - **Tier Mapping** (data-driven, stored in centralized config):
   - Free Tier: 0 monthly webhook deliveries, no webhooks
@@ -684,15 +686,58 @@ interface Entitlement {
   - Entitlements are explicit and auditable
   - Pricing policy is single source of truth for tier determination
 
-## 3. Technical Architecture
+### 2.37 Admin Panel Pricing Plan Management
+- **Functionality**: Admin panel interface for users to manage their subscription plans
+- **Features**:
+  - **Pricing Plan Display**: Display all available pricing tiers (Free, Basic, Premium) with detailed feature comparison
+  - **Current Plan Indicator**: Clearly indicate user's current active pricing tier
+  - **Upgrade/Downgrade Options**: Allow users to upgrade or downgrade their subscription plan
+  - **Plan Selection Interface**: Interactive interface for selecting desired pricing tier
+  - **Subscription Cancellation**: Cancel subscription button to allow users to cancel their active subscription
+  - **Plan Change Confirmation**: Confirmation dialog before processing plan changes
+  - **Immediate Plan Changes**: Plan changes take effect immediately upon successful payment processing
+- **User Interface Components**:
+  - Pricing tier cards with feature lists and pricing information
+  - Current plan badge or indicator
+  - Upgrade/Downgrade action buttons
+  - Cancel subscription button (visible only for active paid subscriptions)
+  - Confirmation dialogs for plan changes and cancellations
+- **Business Logic**:
+  - Free tier users can upgrade to Basic or Premium\n  - Basic tier users can upgrade to Premium or downgrade to Free
+  - Premium tier users can downgrade to Basic or Free
+  - Cancellation returns user to Free tier at end of current billing period
+  - Immediate access to new tier features upon successful upgrade
+  - Graceful feature access removal upon downgrade
+- **Endpoints**:
+  - GET /admin/pricing/plans: Get all available pricing plans
+  - POST /admin/subscription/change: Change subscription plan (upgrade/downgrade)
+  - POST /admin/subscription/cancel: Cancel active subscription
+  - GET /admin/subscription/current: Get current subscription details
+\n### 2.38 Sellers Page Data Management
+- **Functionality**: Display and manage seller data on sellers page
+- **Data Source**: Display only real seller data from database, no placeholder or mock data
+- **Features**:
+  - List all sellers with real data
+  - Display seller metrics and analytics
+  - Filter and search sellers
+  - Seller detail view\n- **Data Requirements**:
+  - Remove all placeholder stores and mock data
+  - Display empty state when no sellers exist
+  - Load seller data dynamically from database
+  - Handle loading and error states appropriately
+- **Empty State Handling**:
+  - Display informative empty state message when no sellers exist
+  - Provide call-to-action to add first seller
+  - Clear visual indication that page is ready but contains no data
+\n## 3. Technical Architecture
 
 ### 3.1 Data Processing\n- Pre-allocated fixed-size contiguous ring buffers for real-time data storage
 - Circular access using index mod window size\n- Zero per-event reallocation, no per-event object churn
-- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)\n- Batch processing support for high-throughput scenarios
+- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
+- Batch processing support for high-throughput scenarios
 - Deterministic computation pipeline with fixed random seeds and consistent ordering
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
-
-### 3.2 Caching Strategy with Temporal Locality
+\n### 3.2 Caching Strategy with Temporal Locality
 - Probabilistic caching mechanism\n- **lastComputedAt** timestamp tracking
 - Probabilistic refresh only on query\n- Dynamic TTL adjustment (defined in centralized config)
 - Hot/cold data differentiation
@@ -716,8 +761,8 @@ interface Entitlement {
 - Webhook management endpoints
 - Funnel analysis endpoints
 - Admin tier reconciliation endpoints
-
-### 3.4 Dashboard Components
+- Admin pricing plan management endpoints
+\n### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
 - Time series charts with proper timestamp handling:\n  - Internal numeric timestamps
   - Formatted display in tooltips and axis ticks
@@ -738,6 +783,8 @@ interface Entitlement {
 - **Assigned Tasks Widget**: Display list of tasks assigned to current user with status indicators and quick update functionality
 - **Navigation in Main Section**: Navigation styled in the main section (no traditional sidebar)
 - **Admin Tier Reconciliation Panel**: Display tier state, usage metrics, reconciliation controls (admin only)
+- **Admin Pricing Plan Management Panel**: Display pricing plans, current plan, upgrade/downgrade options, cancel subscription button (admin panel)
+- **Lazy Loading**: All dashboard components implement lazy loading for improved performance
 
 ### 3.5 Real-time Integration
 - Supabase Realtime for real-time data streaming
@@ -753,6 +800,7 @@ interface Entitlement {
 - One-click export functionality integration
 - Configuration snapshot storage per report
 - **Tier Reconciliation System**: Admin-triggered tier recalculation based on usage and policy
+- **Pricing Plan Management**: User-facing interface for plan upgrades, downgrades, and cancellations
 \n### 3.7 Deterministic Reproducibility System
 - Fixed random seed management
 - Deterministic ordering and computation order
@@ -780,7 +828,8 @@ interface Entitlement {
 - **Version Control**: All configuration changes versioned with timestamps
 - **Audit Trail**: Full audit log of configuration changes\n\n### 3.9 Modular and Composable Architecture
 - **Composability Focus**: Design for composability, not reuse
-- **Modular Components**: Separate modules for DSP, caching, alerts, reports, export, embed, config management, insight lifecycle, edge case detection, systemic anomaly detection, authentication, team management, project management, task management, billing, webhook management, funnel analysis, tier reconciliation\n- **Clean Refactoring**: Eliminate redundancy, centralize common logic
+- **Modular Components**: Separate modules for DSP, caching, alerts, reports, export, embed, config management, insight lifecycle, edge case detection, systemic anomaly detection, authentication, team management, project management, task management, billing, webhook management, funnel analysis, tier reconciliation, pricing plan management
+- **Clean Refactoring**: Eliminate redundancy, centralize common logic
 - **Zero Magic Numbers**: All constants defined in centralized config
 \n### 3.10 Data Minimization and Privacy Architecture
 - **Hard Invariant**: No names, emails, addresses in analytics path
@@ -807,8 +856,7 @@ interface Entitlement {
 - **Webhooks as Side-Effects**: Webhooks are side-effects of insight state changes, never as inputs
 - **Funnel Determinism**: Funnel analysis must be deterministic and reproducible
 - **Tier as Derived State**: Tier is always derived from usage and policy, never manually assigned
-
-### 3.13 Encryption Strategy
+\n### 3.13 Encryption Strategy
 - **At Rest Encryption**:
   - Event storage: Encrypted\n  - Configuration tables: Encrypted
   - Reports: Encrypted
@@ -844,12 +892,20 @@ interface Entitlement {
 - **Accessibility**: WCAG compliant, keyboard navigation support
 - **Performance**: Optimized loading, lazy loading for images and components
 - **Design Inspiration**: Modern, clean aesthetics inspired by design patterns similar to nfinitepaper.com
-
-### 3.15 Authentication and Authorization Architecture
+- **Lazy Loading Implementation**: Apply lazy loading to all pages and major components
+- **Page Transitions**: Smooth page transitions with subtle animations using motion library
+- **Animation Library**: Use motion library (Framer Motion) for page transitions and component animations
+- **Animation Characteristics**:
+  - Subtle and smooth transitions
+  - Non-intrusive animations that enhance user experience
+  - Consistent animation timing and easing across all pages
+  - Fade-in and slide-in effects for page transitions
+  - Optimized animation performance to avoid jank
+\n### 3.15 Authentication and Authorization Architecture
 - **Authentication Method**: JWT token-based authentication
 - **Session Management**: Secure session handling with token refresh
 - **Role-Based Access Control (RBAC)**:
-  - Admin role: Full permissions including tier reconciliation
+  - Admin role: Full permissions including tier reconciliation and pricing plan management
   - Member role: Limited permissions\n- **Permission Enforcement**: Server-side permission checks for all protected endpoints
 - **Token Security**: HTTP-only cookies for token storage, CSRF protection
 - **Post-Registration Flow**: Redirect users to dashboard page after successful registration
@@ -866,6 +922,7 @@ interface Entitlement {
 - **Payment Notifications**: Display success/failure notifications with 5-second auto-dismiss
 - **Configuration Validation**: Validate Stripe API keys before processing payments
 - **Error Handling**: Clear error messages when payment system is not configured
+- **Plan Change Processing**: Handle subscription upgrades, downgrades, and cancellations through Stripe API
 
 ### 3.18 Webhook Architecture
 - **Asynchronous Delivery**: Webhook delivery is asynchronous, does not block main analytics flow
@@ -880,8 +937,9 @@ interface Entitlement {
 - **Step Constraints**: Steps must be temporally monotonic, windows must align
 - **Sufficiency Checks**: Data sufficiency validation per step
 - **Dropoff Attribution**: Detailed dropoff reason analysis per step
-- **Deterministic Computation**: Funnel analysis must be deterministic and reproducible\n
-### 3.20 Tier Reconciliation Architecture\n- **Derived State Model**: Tier is always computed from usage metrics and pricing policy
+- **Deterministic Computation**: Funnel analysis must be deterministic and reproducible
+\n### 3.20 Tier Reconciliation Architecture
+- **Derived State Model**: Tier is always computed from usage metrics and pricing policy
 - **Computation Triggers**:
   - Scheduled jobs (periodic automatic reconciliation)
   - Admin-triggered reconciliation (on-demand)
@@ -893,10 +951,10 @@ interface Entitlement {
   - Storage usage
 - **Pricing Policy Engine**:
   - Load current pricing config
-  - Apply grace rules\n  - Compute effective tier
+  - Apply grace rules
+  - Compute effective tier
 - **State Persistence**:
-  - effectiveTier
-  - pricingVersion
+  - effectiveTier\n  - pricingVersion
   - computedAt
   - source (scheduled or admin_reconcile)
 - **Entitlements System**:
@@ -905,7 +963,33 @@ interface Entitlement {
   - Admin-granted and auditable
 - **Audit Trail**: Full logging of all tier changes and reconciliations
 
-## 4. System Characteristics
+### 3.21 Performance Optimization Architecture
+- **Lazy Loading Strategy**:
+  - Code splitting for all major pages and components
+  - Dynamic imports for route-based code splitting
+  - Lazy loading of images and media assets
+  - Deferred loading of non-critical components
+- **Page Transition System**:
+  - Motion library (Framer Motion) integration for smooth transitions
+  - Consistent animation timing across all pages
+  - Fade-in and slide-in effects for page transitions
+  - Optimized animation performance to prevent layout shifts
+- **Animation Performance**:
+  - GPU-accelerated animations using transform and opacity
+  - RequestAnimationFrame for smooth 60fps animations
+  - Avoid animating layout-triggering properties
+  - Preload critical animation assets
+- **Loading States**:
+  - Skeleton screens for lazy-loaded content
+  - Progressive loading indicators
+  - Smooth transitions between loading and loaded states
+\n### 3.22 Sellers Page Architecture
+- **Data Loading**: Dynamic data loading from database, no static or placeholder data
+- **Empty State Handling**: Graceful empty state display when no sellers exist
+- **Real-time Updates**: Real-time seller data updates using Supabase Realtime
+- **Performance**: Optimized queries and pagination for large seller datasets
+- **Error Handling**: Comprehensive error handling for data loading failures
+\n## 4. System Characteristics
 - Lightweight and elegant design
 - High performance and scalability
 - Real-time processing capabilities
@@ -929,7 +1013,8 @@ interface Entitlement {
 - Efficient data movement with pre-allocated ring buffers and zero per-event churn
 - Single primary trigger for alerts with contextual information
 - Auditable configuration management with version control and snapshots
-- Formalized insight lifecycle with state management\n- Data minimization and privacy as hard invariants
+- Formalized insight lifecycle with state management
+- Data minimization and privacy as hard invariants
 - Aggregation-first analytics approach
 - Tier-based retention policies with automatic decay
 - Codified system invariants for consistency and reliability
@@ -948,6 +1033,11 @@ interface Entitlement {
 - Landing page design inspired by modern aesthetics similar to nfinitepaper.com
 - Webhook volume mapping directly into pricing tiers for transparent monetization
 - Admin tier reconciliation system with derived state model and entitlements
+- User-facing pricing plan management with upgrade/downgrade/cancel capabilities
+- Clean sellers page with real data only, no placeholder content
+- Lazy loading implementation for all pages and components
+- Smooth page transitions with subtle animations using motion library
+- Optimized animation performance for 60fps user experience
 \n## 5. System Charter
 
 ### 5.1 Purpose and Scope
@@ -1015,7 +1105,8 @@ We enforce strict data minimization as a core architectural principle. No person
 We employ a comprehensive encryption strategy to protect data at rest and in transit:\n\n- **At Rest**: Event storage, configuration tables, reports, usage logs, user credentials, team data, project data, task data, webhook configurations, and tier state are encrypted using industry-standard encryption algorithms.
 - **In Transit**: All API traffic, widget embeds, webhooks, and real-time connections are encrypted using TLS without exception.
 - **Secrets and Keys**: API keys, webhook secrets, embed tokens, and Stripe API keys are encrypted, rotatable, scoped, and revocable. Automatic key rotation policies are enforced.
-\nDerived analytics, aggregated metrics, and scores are not encrypted as they are aggregated and non-sensitive by design.
+
+Derived analytics, aggregated metrics, and scores are not encrypted as they are aggregated and non-sensitive by design.
 
 ### 6.4 Determinism and Auditability
 
@@ -1045,9 +1136,9 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Definition**: An anomaly is a statistically significant deviation from expected behavioral patterns, quantified as a probabilistic score in the range [0, 1]. An anomaly score of 0 indicates no deviation; a score of 1 indicates maximum deviation.
 
 **Composition**: Anomaly scores are calculated using a Bayesian/probabilistic combination of:\n- **FFT Peak Contribution**: Periodic spikes detected through Fast Fourier Transform analysis.\n- **HFD Complexity Contribution**: Time series complexity measured via Higuchi Fractal Dimension.
-- **Trend Deviation Contribution**: Deviation from smoothed trend line.\n- **Smoothed Deviation Contribution**: Deviation from FIR smoothed baseline.
-
-**Interpretation**: Anomalies represent potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
+- **Trend Deviation Contribution**: Deviation from smoothed trend line.
+- **Smoothed Deviation Contribution**: Deviation from FIR smoothed baseline.
+\n**Interpretation**: Anomalies represent potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
 
 **Attribution**: All anomaly outputs include root cause breakdown showing percentage contribution of each component to overall anomaly score.
 
@@ -1137,8 +1228,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 
 **Delivery Guarantees**: Webhook delivery is asynchronous and best-effort. Delivery failures never affect analytics computation.
 
-### 7.11 Funnel\n
-**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
+### 7.11 Funnel
+\n**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
 
 **Step Constraints**:
 - Steps must be temporally monotonic (chronological order)\n- Funnel windows must align with ring buffer windows
