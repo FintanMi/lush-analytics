@@ -156,6 +156,17 @@ export interface RateLimitStatus {
   remaining: number;
   resetAt: number;
   tier: 'free' | 'basic' | 'pro' | 'enterprise';
+  backpressure?: {
+    queueDepth: number;
+    avgProcessingTime: number;
+    rejectionRate: number;
+    throttledRequests: number;
+  };
+  quota?: {
+    used: number;
+    total: number;
+    percentageUsed: number;
+  };
 }
 
 export interface ApiUsageStats {

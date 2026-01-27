@@ -68,7 +68,6 @@ const pricingTiers: PricingTier[] = [
       'Priority email support',
       'Up to 5 seller accounts',
       'Anomaly detection',
-      'Basic predictions',
       'Privacy by Design',
       'High Performance'
     ],
@@ -376,7 +375,7 @@ export default function AdminPanel() {
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
             <div>
               <p className="text-sm text-muted-foreground">Current Plan</p>
-              <p className="text-2xl font-bold capitalize">{currentTier}</p>
+              <p className="text-2xl font-bold capitalize">{currentTier.charAt(0).toUpperCase() + currentTier.slice(1)} Tier</p>
             </div>
             {currentTier !== 'free' && (
               <AlertDialog>
@@ -433,8 +432,12 @@ export default function AdminPanel() {
                       ))}
                     </ul>
                     <Button
-                      className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                      variant="outline"
+                      className={`w-full ${
+                        currentTier.toLowerCase() === tier.name.toLowerCase()
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'border-primary text-primary hover:bg-primary hover:text-primary-foreground'
+                      }`}
+                      variant={currentTier.toLowerCase() === tier.name.toLowerCase() ? 'default' : 'outline'}
                       disabled={currentTier.toLowerCase() === tier.name.toLowerCase() || processingPayment}
                       onClick={() => handleUpgradeDowngrade(tier)}
                     >
