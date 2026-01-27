@@ -57,27 +57,10 @@ interface PricingTier {
 const pricingTiers: PricingTier[] = [
   {
     name: 'Free',
-    price: '0',
-    priceValue: 0,
-    period: 'forever',
-    description: 'Perfect for getting started',
-    features: [
-      'Up to 1,000 events/month',
-      'Basic analytics dashboard',
-      '7-day data retention',
-      'Email support',
-      'Single seller account',
-      'Privacy by Design',
-      'High Performance'
-    ],
-    highlighted: false
-  },
-  {
-    name: 'Basic',
     price: '50',
     priceValue: 50,
     period: 'month',
-    description: 'For growing businesses',
+    description: 'For all your business needs',
     features: [
       'Up to 50,000 events/month',
       'Advanced analytics',
@@ -86,27 +69,6 @@ const pricingTiers: PricingTier[] = [
       'Up to 5 seller accounts',
       'Anomaly detection',
       'Basic predictions',
-      'Privacy by Design',
-      'High Performance'
-    ],
-    highlighted: false
-  },
-  {
-    name: 'Premium',
-    price: '300',
-    priceValue: 300,
-    period: 'month',
-    description: 'For established companies',
-    features: [
-      'Up to 500,000 events/month',
-      'Full analytics suite',
-      '90-day data retention',
-      '24/7 priority support',
-      'Up to 25 seller accounts',
-      'Advanced anomaly detection',
-      'Predictive analytics',
-      'Custom reports',
-      'API access',
       'Privacy by Design',
       'High Performance'
     ],
@@ -301,15 +263,6 @@ export default function AdminPanel() {
   };
 
   const handleUpgradeDowngrade = async (tier: PricingTier) => {
-    if (tier.priceValue === 0) {
-      toast({
-        title: 'Cannot Downgrade to Free',
-        description: 'Please cancel your subscription to return to the free tier.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setProcessingPayment(true);
     try {
       const { data, error } = await supabase.functions.invoke('create_stripe_checkout', {
@@ -452,22 +405,15 @@ export default function AdminPanel() {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Available Plans</h3>
-            <div className="grid gap-6 md:grid-cols-3">
+            <h3 className="text-lg font-semibold mb-4">Available Plan</h3>
+            <div className="flex justify-center">
               {pricingTiers.map((tier) => (
                 <Card 
                   key={tier.name} 
-                  className={`relative ${tier.highlighted ? 'ring-2 ring-primary shadow-lg' : ''} ${currentTier.toLowerCase() === tier.name.toLowerCase() ? 'border-primary' : ''}`}
+                  className="border-primary w-full max-w-md relative"
                 >
-                  {tier.highlighted && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1">
-                        Most Popular
-                      </Badge>
-                    </div>
-                  )}
                   {currentTier.toLowerCase() === tier.name.toLowerCase() && (
-                    <div className="absolute -top-3 right-4">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge variant="default" className="px-3 py-1">
                         Current Plan
                       </Badge>
@@ -493,19 +439,15 @@ export default function AdminPanel() {
                     <Button
                       className="w-full"
                       variant={currentTier.toLowerCase() === tier.name.toLowerCase() ? 'outline' : 'default'}
-                      disabled={currentTier.toLowerCase() === tier.name.toLowerCase() || processingPayment || tier.priceValue === 0}
+                      disabled={currentTier.toLowerCase() === tier.name.toLowerCase() || processingPayment}
                       onClick={() => handleUpgradeDowngrade(tier)}
                     >
                       {processingPayment ? (
                         'Processing...'
                       ) : currentTier.toLowerCase() === tier.name.toLowerCase() ? (
                         'Current Plan'
-                      ) : tier.priceValue === 0 ? (
-                        'Cancel to Downgrade'
-                      ) : tier.priceValue > pricingTiers.find(t => t.name.toLowerCase() === currentTier.toLowerCase())!.priceValue ? (
-                        'Upgrade'
                       ) : (
-                        'Downgrade'
+                        'Subscribe'
                       )}
                     </Button>
                   </CardContent>

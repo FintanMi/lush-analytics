@@ -52,27 +52,10 @@ const features = [
 const pricingTiers = [
   {
     name: 'Free',
-    price: '0',
-    priceValue: 0,
-    period: 'forever',
-    description: 'Perfect for getting started',
-    features: [
-      'Up to 1,000 events/month',
-      'Basic analytics dashboard',
-      '7-day data retention',
-      'Email support',
-      'Single seller account',
-      'Privacy by Design',
-      'High Performance'
-    ],
-    highlighted: false
-  },
-  {
-    name: 'Basic',
     price: '50',
     priceValue: 50,
     period: 'month',
-    description: 'For growing businesses',
+    description: 'For all your business needs',
     features: [
       'Up to 50,000 events/month',
       'Advanced analytics',
@@ -81,27 +64,6 @@ const pricingTiers = [
       'Up to 5 seller accounts',
       'Anomaly detection',
       'Basic predictions',
-      'Privacy by Design',
-      'High Performance'
-    ],
-    highlighted: false
-  },
-  {
-    name: 'Premium',
-    price: '300',
-    priceValue: 300,
-    period: 'month',
-    description: 'For established companies',
-    features: [
-      'Up to 500,000 events/month',
-      'Full analytics suite',
-      '90-day data retention',
-      '24/7 priority support',
-      'Up to 25 seller accounts',
-      'Advanced anomaly detection',
-      'Predictive analytics',
-      'Custom reports',
-      'API access',
       'Privacy by Design',
       'High Performance'
     ],
@@ -461,74 +423,49 @@ export default function LandingPage() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your business needs
+              One plan for all your business needs
             </p>
           </div>
 
-          {/* CSS-only Accordion */}
-          <div className="max-w-4xl mx-auto space-y-4">
-            {pricingTiers.map((tier, index) => (
-              <div key={index} className="pricing-accordion-item">
-                <input 
-                  type="radio" 
-                  name="pricing-accordion" 
-                  id={`pricing-${index}`}
-                  className="pricing-accordion-input"
-                  defaultChecked={tier.highlighted}
-                />
-                <label 
-                  htmlFor={`pricing-${index}`}
-                  className={`pricing-accordion-label ${
-                    tier.highlighted ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1">
-                      {tier.highlighted && (
-                        <Badge className="bg-gradient-to-r from-primary to-chart-4 text-white px-3 py-1 w-fit">
-                          Most Popular
-                        </Badge>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold">{tier.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
-                      <div className="text-left sm:text-right">
-                        <span className="text-3xl font-bold">€{tier.price}</span>
-                        <span className="text-muted-foreground text-sm">/{tier.period}</span>
-                      </div>
-                      <div className="pricing-accordion-icon shrink-0">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <div className="pricing-accordion-content">
-                  <div className="p-6 space-y-6">
-                    <ul className="grid sm:grid-cols-2 gap-3">
-                      {tier.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-start gap-2">
-                          <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className="w-full"
-                      variant={tier.highlighted ? 'default' : 'outline'}
-                      size="lg"
-                      onClick={() => handleTierSelection(tier)}
-                      disabled={processingPayment}
-                    >
-                      {processingPayment ? 'Processing...' : tier.priceValue === 0 ? 'Get Started' : 'Subscribe Now'}
-                    </Button>
-                  </div>
+          {/* Single Pricing Card */}
+          <div className="flex justify-center max-w-6xl mx-auto">
+            {pricingTiers.map((tier) => (
+              <Card 
+                key={tier.name} 
+                className="relative border-primary shadow-lg w-full max-w-md"
+              >
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-primary text-primary-foreground">Recommended</Badge>
                 </div>
-              </div>
+                <CardHeader>
+                  <CardTitle className="text-2xl">{tier.name}</CardTitle>
+                  <CardDescription>{tier.description}</CardDescription>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold">€{tier.price}</span>
+                    <span className="text-muted-foreground">/{tier.period}</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-3">
+                    {tier.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    className="w-full" 
+                    variant="default"
+                    size="lg"
+                    onClick={() => handleTierSelection(tier)}
+                    disabled={processingPayment}
+                  >
+                    {processingPayment ? 'Processing...' : 'Get Started'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
