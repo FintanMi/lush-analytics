@@ -10,8 +10,7 @@ import {
   BarChart3, 
   Check, 
   Star,
-  ArrowRight,
-  Mail
+  ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router';
@@ -295,14 +294,6 @@ export default function LandingPage() {
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="text-lg px-8 py-6"
-                asChild
-              >
-                <Link to="/dashboard">View Dashboard</Link>
-              </Button>
             </div>
             <p className="text-sm text-muted-foreground">
               No credit card required • 14-day free trial • Cancel anytime
@@ -464,48 +455,6 @@ export default function LandingPage() {
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Email Signup Section */}
-      <section className="py-20 lg:py-32 gradient-bg">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8">
-          <Card className="card-modern glass">
-            <CardContent className="p-8 lg:p-12">
-              <div className="text-center space-y-6">
-                <div className="p-4 bg-gradient-to-br from-primary/10 to-chart-4/10 rounded-2xl w-fit mx-auto">
-                  <Mail className="h-12 w-12 text-primary" />
-                </div>
-                <h2 className="text-3xl lg:text-4xl font-bold tracking-tight">
-                  Stay Updated
-                </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Subscribe to our newsletter for the latest features, tips, and analytics insights
-                </p>
-                <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto pt-4">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="flex-1 h-12 text-base"
-                  />
-                  <Button 
-                    type="submit" 
-                    size="lg"
-                    disabled={isSubmitting}
-                    className="h-12 px-8"
-                  >
-                    {isSubmitting ? 'Subscribing...' : 'Subscribe'}
-                  </Button>
-                </form>
-                <p className="text-xs text-muted-foreground">
-                  We respect your privacy. Unsubscribe at any time.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </section>
 

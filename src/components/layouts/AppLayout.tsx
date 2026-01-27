@@ -104,19 +104,20 @@ function SidebarNav() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleLogout}
+                  className="rounded-lg transition-all duration-200 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="font-medium">Logout</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
-        <Button
-          variant="outline"
-          className="w-full justify-start gap-2"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4" />
-          <span>Logout</span>
-        </Button>
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">© 2026 Lush Analytics</p>
           <ModeToggle />
