@@ -132,19 +132,33 @@ const testimonials = [
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<typeof pricingTiers[0] | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleCheckout = async (tier: typeof pricingTiers[0]) => {
-    if (tier.priceValue === 0) {
-      // Free tier - just redirect to dashboard
-      navigate('/dashboard');
-      return;
+  const handleTierSelection = async (tier: typeof pricingTiers[0]) => {
+    // Check if user is already logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      // User is logged in, proceed with checkout
+      if (tier.priceValue === 0) {
+        navigate('/dashboard');
+        return;
+      }
+      await processCheckout(tier);
+    } else {
+      // User not logged in, open signup dialog
+      setSelectedTier(tier);
+      openDialog();
     }
+  };
 
+  const processCheckout = async (tier: typeof pricingTiers[0]) => {
     setProcessingPayment(true);
     try {
       const { data, error } = await supabase.functions.invoke('create_stripe_checkout', {
@@ -166,19 +180,12 @@ export default function LandingPage() {
         throw new Error(error.message || 'Failed to create checkout session');
       }
 
-      // Check response code in data
       if (data?.code === 'FAIL') {
         throw new Error(data?.message || 'Failed to create checkout session');
       }
 
       if (data?.code === 'SUCCESS' && data?.data?.url) {
-        // Open Stripe checkout in new tab
-        window.open(data.data.url, '_blank');
-        toast({
-          title: 'Redirecting to Payment',
-          description: 'Opening Stripe checkout in a new tab...',
-          duration: 5000,
-        });
+        window.location.href = data.data.url;
       } else {
         throw new Error('Invalid response from payment service');
       }
@@ -188,7 +195,6 @@ export default function LandingPage() {
       let errorMessage = 'Failed to initiate payment. Please try again.';
       let errorTitle = 'Payment Failed';
       
-      // Check for specific error types
       if (error?.message?.includes('STRIPE_SECRET_KEY')) {
         errorTitle = 'Configuration Error';
         errorMessage = 'Payment system not configured. Please contact support.';
@@ -225,23 +231,52 @@ export default function LandingPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Sign up the user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    toast({
-      title: 'Success!',
-      description: 'Thank you for signing up. Redirecting to dashboard...',
-      duration: 5000,
-    });
+      if (error) throw error;
 
-    setEmail('');
-    setIsSubmitting(false);
-    closeDialog();
+      if (data.user) {
+        toast({
+          title: 'Account Created!',
+          description: 'Welcome to Lush Analytics.',
+        });
 
-    // Redirect to dashboard after signup
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1000);
+        closeDialog();
+
+        // Handle tier-based redirect
+        if (selectedTier) {
+          if (selectedTier.priceValue === 0) {
+            // Free tier - redirect to dashboard
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 500);
+          } else {
+            // Paid tier - redirect to Stripe checkout
+            setTimeout(async () => {
+              await processCheckout(selectedTier);
+            }, 500);
+          }
+        } else {
+          // Default to dashboard
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 500);
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Signup Failed',
+        description: error.message || 'Failed to create account. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Close dialog on escape key or backdrop click
@@ -289,7 +324,7 @@ export default function LandingPage() {
               <Button 
                 size="lg" 
                 className="text-lg px-8 py-6 shadow-lg shadow-primary/20"
-                onClick={openDialog}
+                onClick={() => handleTierSelection(pricingTiers[0])}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -403,7 +438,7 @@ export default function LandingPage() {
                       className="w-full"
                       variant={tier.highlighted ? 'default' : 'outline'}
                       size="lg"
-                      onClick={() => handleCheckout(tier)}
+                      onClick={() => handleTierSelection(tier)}
                       disabled={processingPayment}
                     >
                       {processingPayment ? 'Processing...' : tier.priceValue === 0 ? 'Get Started' : 'Subscribe Now'}
@@ -465,9 +500,9 @@ export default function LandingPage() {
       >
         <div className="p-8 space-y-6">
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold tracking-tight">Start Your Free Trial</h3>
+            <h3 className="text-2xl font-bold tracking-tight">Create Your Account</h3>
             <p className="text-muted-foreground">
-              Get started with Lush Analytics today. No credit card required.
+              Sign up to get started with Lush Analytics.
             </p>
           </div>
           
@@ -488,16 +523,32 @@ export default function LandingPage() {
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="company" className="text-sm font-medium">
-                Company Name
+              <label htmlFor="dialog-password" className="text-sm font-medium">
+                Password
               </label>
               <Input
-                id="company"
-                type="text"
-                placeholder="Your Company"
+                id="dialog-password"
+                type="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
                 className="h-11"
               />
             </div>
+
+            {selectedTier && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">Selected Plan: {selectedTier.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedTier.priceValue === 0 
+                    ? 'Free forever' 
+                    : `€${selectedTier.price}/${selectedTier.period} - You'll be redirected to payment after signup`
+                  }
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button 
@@ -505,7 +556,7 @@ export default function LandingPage() {
                 className="flex-1"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Starting...' : 'Start Free Trial'}
+                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
               </Button>
               <Button 
                 type="button" 

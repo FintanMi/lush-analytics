@@ -84,8 +84,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - Confirmed: Insight validated by subsequent data or user action
   - Expired: Insight no longer relevant due to time passage
   - Superseded: Insight replaced by newer, more accurate insight
-- **State Transitions**: Automatic state management based on time, data updates, and user feedback
-- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
+- **State Transitions**: Automatic state management based on time, data updates, and user feedback\n- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
 \n### 2.9 Anomaly Attribution (Root Cause Breakdown)
 - **Functionality**: Explain anomaly score composition\n- **Components**:
   - FFT peak contribution percentage
@@ -190,7 +189,8 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Response Format**:
   - anomalyScore: Overall anomaly score\n  - attribution: Root cause breakdown
   - timeWindow: Time window definition
-  - dataSufficiency: Data sufficiency metrics\n  - reproducibilityHash: Hash for verification
+  - dataSufficiency: Data sufficiency metrics
+  - reproducibilityHash: Hash for verification
   - confidenceMessage: Confidence and sufficiency-aware messaging
   - configVersion: Configuration version used
   - signalQuality: Signal quality assessment
@@ -234,8 +234,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - Rate limits per embed key (defined in centralized config by tier)
   - Light branding watermark for Free/Basic tiers
   - Default read-only scope (no write access unless explicitly granted)
-  - Require embed key authentication\n
-### 2.23 Auditable Configuration Management
+  - Require embed key authentication\n\n### 2.23 Auditable Configuration Management
 - **Functionality**: Track and audit all configuration changes
 - **Features**:
   - Version control for configuration tables
@@ -275,7 +274,8 @@ The application now includes a redesigned modern frontend interface with navigat
     - Subheadline: Supporting description
     - Call-to-action button: Opens user interaction dialog
   - **Features Section**:
-    - Six feature cards with icons\n    - Highlight key platform capabilities
+    - Six feature cards with icons
+    - Highlight key platform capabilities
     - **Anomaly Detection Card**: Reference advanced mathematical models (no mention of AI or machine learning)
     - **Predictive Insights Card**: Use Leverage business intelligence instead of Leverage advanced mathematical models
     - **Privacy by Design Card**: GDPR compliant with strict data minimization. No PII in analytics paths—only behavioral signals on aggregated data.\n    - **High Performance Card**: Ring buffer architecture with zero per-event allocation. Probabilistic caching ensures sub-millisecond response times.
@@ -283,6 +283,9 @@ The application now includes a redesigned modern frontend interface with navigat
     - Three pricing tiers with clear differentiation:\n      - Free Tier: €0\n      - Basic Tier: €50
       - Premium Tier: €300
     - Display pricing with Euro symbol (€)
+    - **Pricing Tier Button Behavior**:
+      - **Free Tier Get Started Button**: Clicking this button redirects user to sign up dialog. After successful registration, free tier users are redirected to dashboard page.
+      - **Paid Tier Subscribe Now Buttons**: Clicking these buttons redirects user to sign up dialog. After successful registration, paid tier users are redirected to Stripe checkout. After completing Stripe setup, users are redirected to dashboard page.
   - **Testimonials Section**:
     - Customer testimonials and success stories
   - **Email Signup Form**:
@@ -302,11 +305,13 @@ The application now includes a redesigned modern frontend interface with navigat
   - User registration with email and password
   - User login with email and password
   - Password reset functionality
-  - Session management
-  - JWT token-based authentication
-  - **Post-Registration Redirect**: After successful registration, users are redirected to dashboard page
-- **Endpoints**:\n  - POST /auth/register: User registration
-  - POST /auth/login: User login\n  - POST /auth/logout: User logout
+  - Session management\n  - JWT token-based authentication
+  - **Post-Registration Redirect**: After successful registration, users are redirected based on selected pricing tier:\n    - Free tier users: Redirected to dashboard page
+    - Paid tier users: Redirected to Stripe checkout, then to dashboard page after completing payment
+- **Endpoints**:
+  - POST /auth/register: User registration
+  - POST /auth/login: User login
+  - POST /auth/logout: User logout
   - POST /auth/reset-password: Password reset request
   - POST /auth/confirm-reset: Confirm password reset
 \n### 2.28 Team Management System
@@ -318,7 +323,7 @@ The application now includes a redesigned modern frontend interface with navigat
     - Manage team settings
     - Create and manage projects
     - Assign tasks to team members
-    - Reconcile user pricing tiers
+    - Reconcile user pricing tiers\n    - Access admin panel without errors
   - **Member**: Limited permissions
     - View team settings (read-only)
     - View projects and tasks
@@ -326,11 +331,13 @@ The application now includes a redesigned modern frontend interface with navigat
     - Cannot invite/remove members
     - Cannot modify team settings
     - Cannot reconcile pricing tiers
+    - Cannot access admin panel
 - **Features**:
   - Team creation\n  - Member invitation via email
   - Member removal by admin
   - Role assignment and management
   - Team settings management (admin only)
+  - **Admin Panel Access Control**: When logged-in users with Admin role click the Admin Panel button, they should be granted access without error messages. Proper role verification and access control must be implemented.
 - **Endpoints**:
   - POST /teams: Create new team
   - GET /teams/:teamId: Get team details
@@ -368,8 +375,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - Create tasks within projects
   - Assign tasks to team members
   - Update task status
-  - Update task details (title, description)
-  - Reassign tasks\n  - Real-time task updates using Supabase Realtime
+  - Update task details (title, description)\n  - Reassign tasks\n  - Real-time task updates using Supabase Realtime
   - Filter tasks by status
   - Filter tasks by assigned user
 - **Real-time Synchronization**:
@@ -411,14 +417,15 @@ The application now includes a redesigned modern frontend interface with navigat
   - **Payment System Configuration Validation**: Validate Stripe API keys and configuration before processing payments
   - **Error Handling**: Display clear error messages when payment system is not properly configured
 - **Payment Flow**:
-  1. Validate payment system configuration (Stripe API keys present and valid)
-  2. User selects pricing tier
-  3. Redirect to Stripe Checkout
-  4. User completes payment
-  5. Webhook confirms payment
-  6. Display success/failure notification (auto-dismiss after 5 seconds)
-  7. User tier automatically updated
-  8. Grant access to tier-specific features
+  1. User selects pricing tier from landing page (Free tier Get Started button or Paid tier Subscribe Now buttons)
+  2. User is redirected to sign up dialog
+  3. User completes registration\n  4. **Free Tier Flow**: User is redirected directly to dashboard page
+  5. **Paid Tier Flow**: \n     - Validate payment system configuration (Stripe API keys present and valid)
+     - User is redirected to Stripe Checkout
+     - User completes payment
+     - Webhook confirms payment\n     - Display success/failure notification (auto-dismiss after 5 seconds)
+     - User tier automatically updated\n     - User is redirected to dashboard page
+     - Grant access to tier-specific features
 - **Configuration Error Handling**:
   - If Stripe API keys are missing or invalid, display error: Payment system not configured. Please contact support.
   - Prevent payment flow initiation when configuration is invalid
@@ -462,7 +469,8 @@ The application now includes a redesigned modern frontend interface with navigat
     \"flags\": []\n  },
   \"configVersion\": \"cfg_2024_11_03_0012\",
   \"reproducibilityHash\": \"sha256:9d3a7c1e8f…\",
-  \"signature\": \"hmac-sha256:ab91e5...\"\n}
+  \"signature\": \"hmac-sha256:ab91e5...\"
+}
 ```
 - **Why This Preserves Determinism**:
   - sequence is monotonic per seller
@@ -535,8 +543,7 @@ The application now includes a redesigned modern frontend interface with navigat
   - DELETE /webhooks/:id: Delete webhook
   - GET /webhooks/:id/deliveries: View webhook delivery history
   - POST /webhooks/:id/test: Test webhook delivery
-
-### 2.34 Funnel Analysis
+\n### 2.34 Funnel Analysis
 - **Functionality**: Funnels are aggregations of event types\n- **Core Principles**:
   - Funnels are deterministic
   - Funnels are reproducible
@@ -579,8 +586,7 @@ funnels:
   - No inferred paths
 - **API Shape**:
   - **Predefined Funnel Templates**: Predefined funnel templates per tier
-  - **Seller-Selectable but Constrained Step Set**: Sellers can select steps but are constrained\n  - **Centralized Config**:
-    - Minimum data requirements
+  - **Seller-Selectable but Constrained Step Set**: Sellers can select steps but are constrained\n  - **Centralized Config**:\n    - Minimum data requirements
     - Step ordering rules
     - Timeouts between steps
 - **Constraints**:
@@ -603,13 +609,13 @@ funnels:
   - reproducibilityHash: Reproducibility hash
   - configVersion: Configuration version
   - signalQuality: Signal quality assessment
-\n### 2.35 Webhook Volume Mapping to Pricing Tiers
+
+### 2.35 Webhook Volume Mapping to Pricing Tiers
 - **Conceptual Model**: Webhook usage treated as downstream compute amplification
 - **Metrics Tracked** (per seller, per month):
   - totalDeliveries: Total webhook deliveries
   - successfulDeliveries: Successful webhook deliveries
-  - failedDeliveries: Failed webhook deliveries
-  - uniqueEventTypes: Number of unique event types
+  - failedDeliveries: Failed webhook deliveries\n  - uniqueEventTypes: Number of unique event types
   - peakHourlyRate: Peak hourly delivery rate
 - **Tier Mapping** (data-driven, stored in centralized config):
   - Free Tier: 0 monthly webhook deliveries, no webhooks
@@ -642,11 +648,13 @@ funnels:
 - **Admin Action**:
   - **Button Label**: Recalculate Tier or Apply Pricing Policy
   - **Confirmation Text**: This will recompute the user's tier based on current usage and pricing rules. No data will be modified.
-  - **Behavior**: Forces tier computation immediately instead of waiting for scheduled job\n- **Tier State Model**:
+  - **Behavior**: Forces tier computation immediately instead of waiting for scheduled job
+- **Tier State Model**:
 ```typescript
 interface TierState {
   effectiveTier: \"free\" | \"basic\" | \"premium\" | \"business\"
-  pricingVersion: string\n  computedAt: number
+  pricingVersion: string
+  computedAt: number
   source: \"scheduled\" | \"admin_reconcile\"
 }\n```
 - **Computation Process**:
@@ -905,10 +913,12 @@ interface Entitlement {
 - **Authentication Method**: JWT token-based authentication
 - **Session Management**: Secure session handling with token refresh
 - **Role-Based Access Control (RBAC)**:
-  - Admin role: Full permissions including tier reconciliation and pricing plan management
+  - Admin role: Full permissions including tier reconciliation, pricing plan management, and admin panel access
   - Member role: Limited permissions\n- **Permission Enforcement**: Server-side permission checks for all protected endpoints
 - **Token Security**: HTTP-only cookies for token storage, CSRF protection
-- **Post-Registration Flow**: Redirect users to dashboard page after successful registration
+- **Post-Registration Flow**: \n  - Free tier users: Redirect to dashboard page after successful registration
+  - Paid tier users: Redirect to Stripe checkout after successful registration, then redirect to dashboard page after completing payment
+- **Admin Panel Access Control**: Proper role verification to ensure Admin users can access admin panel without errors
 \n### 3.16 Team Collaboration Architecture
 - **Multi-Tenancy**: Team-based data isolation
 - **Real-time Collaboration**: Supabase Realtime for real-time team updates
@@ -923,8 +933,9 @@ interface Entitlement {
 - **Configuration Validation**: Validate Stripe API keys before processing payments
 - **Error Handling**: Clear error messages when payment system is not configured
 - **Plan Change Processing**: Handle subscription upgrades, downgrades, and cancellations through Stripe API
-
-### 3.18 Webhook Architecture
+- **Landing Page Payment Flow Integration**: \n  - Free tier Get Started button redirects to sign up dialog, then to dashboard
+  - Paid tier Subscribe Now buttons redirect to sign up dialog, then to Stripe checkout, then to dashboard after payment completion
+\n### 3.18 Webhook Architecture
 - **Asynchronous Delivery**: Webhook delivery is asynchronous, does not block main analytics flow
 - **Retry Mechanism**: Retry strategy with exponential backoff
 - **Dead Letter Queue**: Persistently failed webhooks enter dead letter queue for manual review
@@ -952,8 +963,7 @@ interface Entitlement {
 - **Pricing Policy Engine**:
   - Load current pricing config
   - Apply grace rules
-  - Compute effective tier
-- **State Persistence**:
+  - Compute effective tier\n- **State Persistence**:
   - effectiveTier\n  - pricingVersion
   - computedAt
   - source (scheduled or admin_reconcile)
@@ -1005,16 +1015,14 @@ interface Entitlement {
 - Automated weekly health reports with insight summaries
 - Dynamic alert-driven pricing tiers with fixed defaults
 - Dedicated endpoints for selling anomaly and prediction results
-- One-click export functionality (PDF/Email)
-- Embeddable components for external integration with soft guardrails
+- One-click export functionality (PDF/Email)\n- Embeddable components for external integration with soft guardrails
 - Comprehensive confidence and sufficiency-aware messaging
 - Data-driven configuration system (no magic numbers, no hardcoded logic)
 - Modular and composable architecture
 - Efficient data movement with pre-allocated ring buffers and zero per-event churn
 - Single primary trigger for alerts with contextual information
 - Auditable configuration management with version control and snapshots
-- Formalized insight lifecycle with state management
-- Data minimization and privacy as hard invariants
+- Formalized insight lifecycle with state management\n- Data minimization and privacy as hard invariants
 - Aggregation-first analytics approach
 - Tier-based retention policies with automatic decay
 - Codified system invariants for consistency and reliability
@@ -1038,6 +1046,8 @@ interface Entitlement {
 - Lazy loading implementation for all pages and components
 - Smooth page transitions with subtle animations using motion library
 - Optimized animation performance for 60fps user experience
+- Seamless landing page to registration to payment flow integration
+- Proper admin panel access control without error messages for Admin users
 \n## 5. System Charter
 
 ### 5.1 Purpose and Scope
@@ -1138,7 +1148,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Composition**: Anomaly scores are calculated using a Bayesian/probabilistic combination of:\n- **FFT Peak Contribution**: Periodic spikes detected through Fast Fourier Transform analysis.\n- **HFD Complexity Contribution**: Time series complexity measured via Higuchi Fractal Dimension.
 - **Trend Deviation Contribution**: Deviation from smoothed trend line.
 - **Smoothed Deviation Contribution**: Deviation from FIR smoothed baseline.
-\n**Interpretation**: Anomalies represent potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
+
+**Interpretation**: Anomalies represent potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
 
 **Attribution**: All anomaly outputs include root cause breakdown showing percentage contribution of each component to overall anomaly score.
 
@@ -1170,8 +1181,7 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Definition**: Signal quality is an assessment of the reliability and interpretability of input data. High signal quality indicates clean, consistent, and interpretable data. Low signal quality indicates noisy, inconsistent, or degraded data patterns.
 
 **Signal Quality Indicators**:
-- **Degraded Patterns**: Constant zero values, perfect periodicity, impossible regularity. These patterns are flagged as low-confidence signal mechanisms.
-- **Edge Case Flags**: Indicators of unusual or boundary case data patterns.\n- **Noise Level**: Assessment of data noise and variability.
+- **Degraded Patterns**: Constant zero values, perfect periodicity, impossible regularity. These patterns are flagged as low-confidence signal mechanisms.\n- **Edge Case Flags**: Indicators of unusual or boundary case data patterns.\n- **Noise Level**: Assessment of data noise and variability.
 \n**Handling**: Signal quality metrics are presented in all analysis outputs. Low signal quality reduces confidence and is communicated to users through confidence-aware messaging.
 
 **Philosophy**: Edge cases and degraded patterns are treated as signals, not errors. They provide valuable information about data quality and behavioral patterns.
@@ -1228,8 +1238,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 
 **Delivery Guarantees**: Webhook delivery is asynchronous and best-effort. Delivery failures never affect analytics computation.
 
-### 7.11 Funnel
-\n**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
+### 7.11 Funnel\n
+**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
 
 **Step Constraints**:
 - Steps must be temporally monotonic (chronological order)\n- Funnel windows must align with ring buffer windows

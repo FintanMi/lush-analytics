@@ -156,7 +156,13 @@ export default function AdminPanel() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
-        throw new Error('You must be logged in to access the admin panel');
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to access the admin panel',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
       }
 
       // Get all users via edge function (requires service role)
@@ -167,9 +173,15 @@ export default function AdminPanel() {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading users:', error);
+        // Don't throw error, just show empty state
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
-      const mappedUsers: AuthUser[] = (data.users || []).map((u: any) => ({
+      const mappedUsers: AuthUser[] = (data?.users || []).map((u: any) => ({
         id: u.id,
         email: u.email || 'No email',
         created_at: u.created_at
@@ -182,7 +194,9 @@ export default function AdminPanel() {
         .from('tier_states')
         .select('*');
 
-      if (statesError) throw statesError;
+      if (statesError) {
+        console.error('Error loading tier states:', statesError);
+      }
 
       const statesMap: Record<string, TierState> = {};
       for (const state of states || []) {
@@ -190,9 +204,10 @@ export default function AdminPanel() {
       }
       setTierStates(statesMap);
     } catch (error: any) {
+      console.error('Error in loadUsers:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load users',
+        description: 'Failed to load admin data. Some features may not be available.',
         variant: 'destructive',
       });
     } finally {
