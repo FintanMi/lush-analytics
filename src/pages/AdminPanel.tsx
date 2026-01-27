@@ -460,13 +460,8 @@ export default function AdminPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle>
             Tier Reconciliation
-            {!isAdmin && (
-              <Badge variant="outline" className="text-xs">
-                Your Account Only
-              </Badge>
-            )}
           </CardTitle>
           <CardDescription>
             {isAdmin 

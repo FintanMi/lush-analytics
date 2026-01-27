@@ -109,12 +109,8 @@ export default function LandingPage() {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session) {
-      // User is logged in, proceed with checkout
-      if (tier.priceValue === 0) {
-        navigate('/dashboard');
-        return;
-      }
-      await processCheckout(tier);
+      // User is logged in, redirect to dashboard
+      navigate('/dashboard');
     } else {
       // User not logged in, open signup dialog
       setSelectedTier(tier);
@@ -284,25 +280,10 @@ export default function LandingPage() {
 
           closeDialog();
 
-          // Handle tier-based redirect
-          if (selectedTier) {
-            if (selectedTier.priceValue === 0) {
-              // Free tier - redirect to dashboard
-              setTimeout(() => {
-                navigate('/dashboard');
-              }, 500);
-            } else {
-              // Paid tier - redirect to Stripe checkout
-              setTimeout(async () => {
-                await processCheckout(selectedTier);
-              }, 500);
-            }
-          } else {
-            // Default to dashboard
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 500);
-          }
+          // Redirect to dashboard instead of payment
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 500);
         }
       }
     } catch (error: any) {
@@ -376,7 +357,7 @@ export default function LandingPage() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              No credit card required • 14-day free trial • Cancel anytime
+              No credit card required • Cancel anytime
             </p>
           </div>
         </div>
@@ -440,10 +421,6 @@ export default function LandingPage() {
                 <CardHeader>
                   <CardTitle className="text-2xl">{tier.name}</CardTitle>
                   <CardDescription>{tier.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">€{tier.price}</span>
-                    <span className="text-muted-foreground">/{tier.period}</span>
-                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
@@ -566,12 +543,6 @@ export default function LandingPage() {
             {!isLoginMode && selectedTier && (
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium">Selected Plan: {selectedTier.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedTier.priceValue === 0 
-                    ? 'Free forever' 
-                    : `€${selectedTier.price}/${selectedTier.period} - You'll be redirected to payment after signup`
-                  }
-                </p>
               </div>
             )}
 
