@@ -1,1017 +1,1458 @@
-# Lush Analytics - Product Requirements Document
+# Lush Analytics 需求文档
 
-## 1. Application Overview
+## 1. 应用概述
 
-### 1.1 Application Name
-Lush Analytics
+### 1.1 应用名称
+Lush Analytics\n
+### 1.2 应用描述
+一款为卖家设计的轻量级、高性能分析 API 系统。该系统提供实时异常检测（销售/点击量激增、机器人检测）、短期趋势预测（流量/销售预测）以及高效可扩展的后端架构，利用 DSP 技术（FIR、FFT、HFD）和概率缓存。增强功能包括自动化洞察引擎、预测性警报、卖家健康评分、行为指纹识别能力、确定性可重现性、数据充分性指标、速率限制可见性、决策钩子、每周健康报告、警报驱动的定价层级、专用异常/预测端点、固定层级默认值、洞察摘要、一键导出功能、可嵌入组件、置信度/充分性感知消息、可审计配置管理、形式化洞察生命周期、可嵌入防护栏、编码化系统不变量、数据最小化执行、聚合优先分析、基于层级的保留策略、边缘案例检测作为信号质量指标、全面加密策略、Webhook 注册和管理以及漏斗分析。
 
-### 1.2 Application Description
-A lightweight, high-performance analytics API system designed for sellers. The system provides real-time anomaly detection (sales/click spikes, bot detection), short-term trend prediction (traffic/sales forecasting), and an efficient, scalable backend architecture leveraging DSP technologies (FIR, FFT, HFD) and probabilistic caching. Enhanced features include automated insight engine, predictive alerts, seller health scoring, behavioral fingerprinting capabilities, deterministic reproducibility, data sufficiency metrics, rate limit visibility, decision hooks, weekly health reports, alert-driven pricing tiers, dedicated anomaly/prediction endpoints, fixed tier defaults, insight summaries, one-click export functionality, embeddable components, confidence/sufficiency-aware messaging, auditable configuration management, formalized insight lifecycle, embeddable guardrails, codified system invariants, data minimization enforcement, aggregation-first analytics, tier-based retention policies, edge case detection as signal quality metrics, comprehensive encryption strategy, webhook registration and management, and funnel analysis.
+该应用现包含重新设计的现代化前端界面，导航位于主区域（取代传统侧边栏），具有英雄区、功能展示、定价层级、客户评价和电子邮件注册功能，完全响应式设计适配桌面和移动设备。
+\n**新功能**：团队协作系统，具有基于角色的访问控制（管理员/成员）、项目管理、实时任务跟踪、带任务完成进度和已分配任务的仪表板、Stripe 支付集成以及管理员层级对账系统。
 
-The application now includes a redesigned modern frontend interface with navigation in the main area (replacing traditional sidebar), featuring hero section, feature showcase, pricing tiers, customer testimonials, and email signup functionality, fully responsive for desktop and mobile devices.
+**性能增强**：所有页面实现懒加载，使用 motion 库实现流畅的页面过渡和微妙动画。
 
-**New Features**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, Stripe payment integration, and admin tier reconciliation system.
+**安全增强**：管理员独享层级对账数据和所有用户计划详情的访问权限，登录对话框上的密码重置功能。
 
-**Performance Enhancements**: Lazy loading implemented for all pages with smooth page transitions and subtle animations using motion library.
+**最新升级**：引入查询执行模型（Query Execution Model），将系统从 API 服务升级为分析引擎，支持显式查询计划抽象、多线程调度执行、联邦查询架构、API 驱动的查询请求、成本优化查询、确定性并行保证以及可执行的系统不变量。
+\n## 2. 核心功能
 
-**Security Enhancements**: Admin-exclusive access to tier reconciliation data and all user plan details, password reset functionality on login dialog.
+### 2.1 事件摄取
+- **端点**：POST /events
+- **功能**：实时接受和处理卖家事件数据
+- **负载结构**：
+  - sellerId：卖家标识符（仅不透明/代理密钥）
+  - timestamp：事件时间戳（毫秒）
+  - type：事件类型（SALE / CLICK / VIEW / CHECKOUT_STARTED / PAYMENT_SUCCEEDED）
+  - value：事件值（仅行为信号，无 PII）
+- **处理逻辑**：将事件添加到预分配的固定大小环形缓冲区（连续数组），每个卖家每个指标单独缓冲区。使用索引模窗口大小进行循环访问。无每事件重新分配或对象流失。
+- **数据最小化**：从事件负载中剥离所有 PII（姓名、电子邮件、地址），仅保留行为信号。
+\n### 2.2 批量摄取
+- **端点**：POST /events/batch
+- **功能**：接受高吞吐量卖家的批量事件数据
+- **负载结构**：事件对象数组（已剥离 PII）
+- **处理逻辑**：在单个请求中高效处理多个事件以减少开销，使用相同的环形缓冲区机制\n\n### 2.3 环形缓冲区管理
+- 预分配的固定大小连续数组（窗口大小在集中配置中定义）
+- 使用索引模窗口大小进行循环访问\n- 零每事件重新分配\n- 无每事件对象流失\n- 支持实时 FIR、FFT 和 HFD 计算
+- **明确时间窗口定义**：在 API 响应和 UI 中公开时间窗口参数（起始时间戳、结束时间戳、窗口大小）\n
+### 2.4 DSP 分析管道
+- **FIR 平滑**：平滑时间序列数据\n- **FFT 分析**：检测销售/点击量的周期性峰值，识别重复的机器人模式或每小时峰值
+- **HFD（Higuchi 分形维数）**：测量时间序列复杂性/不规则性，高 HFD 值表示可能的机器人活动或异常行为
+- **贝叶斯/概率评分**：结合平滑偏差、FFT 峰值和 HFD 输出异常分数（0-1 范围）\n- **确定性异常可重现性**：通过固定随机种子、确定性排序和一致的计算顺序确保相同输入始终产生相同输出
+- **聚合优先**：所有分析都在聚合数据上操作，从不在原始单个事件上操作
 
-## 2. Core Features
+### 2.5 具有时间局部性的概率缓存
+- 每个卖家的热指标缓存\n- 每个缓存指标的 **lastComputedAt** 时间戳跟踪
+- 仅在查询时进行概率刷新（非每事件）
+- 在集中配置中定义的自适应 TTL 策略：
+  - 热门卖家：基于配置 TTL 重新计算
+  - 冷门卖家：基于配置 TTL 重新计算
+- 短期缓存层以减少重复函数调用
+- 确保系统在高负载下的可扩展性
+\n### 2.6 异常检测 API
+- **端点**：GET /metrics/:seller/anomalies
+- **功能**：返回卖家异常分数和归因分解
+- **响应格式**：
+  - anomalyScore：总体异常分数（0-1）
+  - attribution：根本原因分解（FFT 峰值贡献、HFD 复杂性贡献、趋势偏差）
+  - timeWindow：明确的时间窗口定义（startTimestamp、endTimestamp、windowSize）
+  - dataSufficiency：数据充分性指标（充分/不充分、所需最小数据点、当前可用数据点）
+  - reproducibilityHash：用于确定性验证的哈希\n  - confidenceMessage：解释结果可靠性的置信度和充分性感知消息\n  - configVersion：用于此计算的配置版本
+  - signalQuality：信号质量评估（降级模式、边缘案例标志）
 
-### 2.1 Event Ingestion
-- **Endpoint**: POST /events
-- **Function**: Accept and process seller event data in real-time
-- **Payload Structure**:
-  - sellerId: Seller identifier (opaque/proxy key only)
-  - timestamp: Event timestamp (milliseconds)
-  - type: Event type (SALE / CLICK / VIEW / CHECKOUT_STARTED / PAYMENT_SUCCEEDED)
-  - value: Event value (behavioral signals only, no PII)
-- **Processing Logic**: Add events to pre-allocated fixed-size ring buffer (contiguous array), separate buffer per seller per metric. Circular access using index mod window size. No per-event reallocation or object churn.
-- **Data Minimization**: Strip all PII (names, emails, addresses) from event payload, retain only behavioral signals.
+### 2.7 预测 API
+- **端点**：GET /metrics/:seller/predictions
+- **功能**：返回带置信区间的预测销售/流量时间序列数据
+- **响应格式**：
+  - predictions：带时间戳的预测值数组
+  - confidenceBands：预测周围的 ± 置信区间\n  - historicalCutoff：标记历史结束和预测开始的时间戳
+  - timeWindow：明确的时间窗口定义\n  - dataSufficiency：数据充分性指标\n  - reproducibilityHash：用于确定性验证的哈希
+  - confidenceMessage：解释预测可靠性的置信度和充分性感知消息\n  - configVersion：用于此计算的配置版本
+  - signalQuality：信号质量评估\n
+### 2.8 带摘要和生命周期管理的自动化洞察引擎
+- **功能**：基于规则和概率分析生成轻量级洞察
+- **输入信号**：\n  - 异常分数\n  - FFT 周期性\n  - HFD 复杂性
+  - 近期趋势斜率
+- **输出**：解释检测到的模式和潜在问题的人类可读洞察摘要
+- **洞察摘要**：简洁、可操作的摘要，便于快速理解
+- **洞察生命周期状态**：
+  - Generated：新创建的洞察
+  - Confirmed：由后续数据或用户操作验证的洞察
+  - Expired：由于时间流逝而不再相关的洞察
+  - Superseded：被更新、更准确的洞察取代的洞察
+- **状态转换**：基于时间、数据更新和用户反馈的自动状态管理
+- **端点**：GET /insights/:seller/lifecycle 查询洞察状态
 
-### 2.2 Batch Ingestion
-- **Endpoint**: POST /events/batch
-- **Function**: Accept bulk event data for high-throughput sellers
-- **Payload Structure**: Array of event objects (PII-stripped)
-- **Processing Logic**: Efficiently process multiple events in a single request to reduce overhead, using same ring buffer mechanism
+### 2.9 异常归因（根本原因分解）
+- **功能**：解释异常分数组成\n- **组成部分**：
+  - FFT 峰值贡献百分比
+  - HFD 复杂性贡献百分比
+  - 趋势偏差贡献百分比
+  - 平滑偏差贡献百分比
+\n### 2.10 具有单一主要触发器的预测性警报
+- **功能**：基于主要触发器和上下文信息的主动警报系统
+- **主要触发器**：异常分数阈值（在集中配置中定义）\n- **上下文信息**：趋势、归因、指纹、时间窗口作为上下文提供，而非额外触发器
+- **警报级别**：由配置表定义（数据驱动），而非条件语句
+- **警报类型**：潜在峰值警告、下降趋势警报、模式转变通知
+- **系统不变量**：所有警报必须引用数据充分性状态
 
-### 2.3 Ring Buffer Management
-- Pre-allocated fixed-size contiguous arrays (window size defined in centralized config)
-- Circular access using index mod window size
-- Zero per-event reallocation
-- No per-event object churn
-- Supports real-time FIR, FFT, and HFD computation
-- **Explicit Time Window Definition**: Expose time window parameters (start timestamp, end timestamp, window size) in API responses and UI
+### 2.11 卖家健康评分（综合指数）
+- **端点**：GET /metrics/:seller/health
+- **功能**：计算综合卖家健康评分\n- **评分因素**：
+  - 波动水平\n  - 异常频率
+  - 预测风险评估
+  - 数据一致性指标
+- **响应格式**：{ healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: \"...\", configVersion: \"...\", signalQuality: {...} }
 
-### 2.4 DSP Analysis Pipeline
-- **FIR Smoothing**: Smooth time series data
-- **FFT Analysis**: Detect periodic spikes in sales/clicks, identify repetitive bot patterns or hourly peaks
-- **HFD (Higuchi Fractal Dimension)**: Measure time series complexity/irregularity, high HFD values indicate possible bot activity or anomalous behavior
-- **Bayesian/Probabilistic Scoring**: Combine smoothed deviation, FFT peaks, and HFD to output anomaly score (0-1 range)
-- **Deterministic Anomaly Reproducibility**: Ensure same input always produces same output through fixed random seeds, deterministic sorting, and consistent computation order
-- **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
+### 2.12 行为指纹识别\n- **功能**：识别和跟踪卖家行为模式
+- **分析方法**：
+  - FFT + HFD + 时间熵组合
+- **检测能力**：
+  - 机器人集群识别
+  - 重复操纵模式\n  - 突然策略变化
+- **输出**：行为指纹签名和模式分类
+- **数据最小化**：指纹仅基于聚合行为信号，无 PII
 
-### 2.5 Probabilistic Caching with Temporal Locality
-- Cache hot metrics per seller
-- **lastComputedAt** timestamp tracking for each cached metric
-- Probabilistic refresh only on query (not per-event)
-- Adaptive TTL strategy defined in centralized config:
-  - Hot sellers: Recompute based on config TTL
-  - Cold sellers: Recompute based on config TTL
-- Short-term cache layer to reduce redundant function calls
-- Ensures system scalability under high load
+### 2.13 智能采样和自适应分辨率
+- **功能**：根据卖家活动自动调整分析计算成本
+- **自适应逻辑**（在集中配置中定义）：
+  - 高活动卖家：全分辨率分析
+  - 中等活动卖家：中等采样\n  - 低活动卖家：降低采样频率
+- **优势**：在保持准确性的同时优化系统资源
+\n### 2.14 实时仪表板集成
+- **技术**：Supabase Realtime 集成
+- **功能**：带 AnomalyAlert 组件的实时仪表板更新
+- **特性**：
+  - 实时异常通知
+  - 实时指标更新
+  - 带分页/无限滚动的事件日志显示
+  - **时间窗口显示**：在 UI 中显示明确的时间窗口定义（开始时间、结束时间、窗口大小）\n  - **数据充分性指标**：显示明确的数据充分性状态（充分/不充分，显示当前与所需数据点的进度条）
+  - **速率限制和背压可见性**：显示当前速率限制状态、剩余配额、背压指标和队列深度
+  - **置信度和充分性感知消息**：根据数据质量显示解释结果可靠性的上下文消息
+  - **洞察生命周期显示**：显示洞察状态（Generated、Confirmed、Expired、Superseded）及视觉指示器
+  - **信号质量指标**：显示边缘案例标志和降级模式警告
+  - **任务完成进度**：显示当前用户已分配任务的总体完成百分比
+  - **已分配任务概览**：显示分配给当前用户的任务列表及状态指示器
+  - **行为指纹识别能力**：在仪表板上实现行为指纹识别功能，显示卖家行为模式分析结果
 
-### 2.6 Anomaly Detection API
-- **Endpoint**: GET /metrics/:seller/anomalies
-- **Function**: Return seller anomaly score and attribution breakdown
-- **Response Format**:
-  - anomalyScore: Overall anomaly score (0-1)
-  - attribution: Root cause breakdown (FFT peak contribution, HFD complexity contribution, trend deviation)
-  - timeWindow: Explicit time window definition (startTimestamp, endTimestamp, windowSize)
-  - dataSufficiency: Data sufficiency metrics (sufficient/insufficient, minimum data points required, current available data points)
-  - reproducibilityHash: Hash for deterministic verification
-  - confidenceMessage: Confidence and sufficiency-aware message explaining result reliability
-  - configVersion: Configuration version used for this computation
-  - signalQuality: Signal quality assessment (degraded mode, edge case flags)
+### 2.15 事件日志管理
+- **功能**：在仪表板上显示和管理事件日志
+- **特性**：
+  - 分页支持
+  - 无限滚动能力
+  - 大量事件的高效数据加载
+- **数据最小化**：仅显示聚合行为信号，无 PII
+\n### 2.16 决策钩子
+- **功能**：为自定义业务逻辑集成提供可扩展的决策钩子
+- **钩子点**：
+  - 异常检测前钩子：在异常检测前执行自定义逻辑
+  - 异常检测后钩子：在异常检测后执行自定义逻辑\n  - 预测前钩子：在预测生成前执行自定义逻辑
+  - 预测后钩子：在预测生成后执行自定义逻辑
+  - 警报触发钩子：在警报触发时执行自定义逻辑
+- **用例**：自定义通知路由、第三方集成、业务规则执行、审计日志记录
 
-### 2.7 Prediction API
-- **Endpoint**: GET /metrics/:seller/predictions
-- **Function**: Return predicted sales/traffic time series data with confidence intervals
-- **Response Format**:
-  - predictions: Array of predicted values with timestamps
-  - confidenceBands: ± confidence intervals around predictions
-  - historicalCutoff: Timestamp marking where history ends and predictions begin
-  - timeWindow: Explicit time window definition
-  - dataSufficiency: Data sufficiency metrics
-  - reproducibilityHash: Hash for deterministic verification
-  - confidenceMessage: Confidence and sufficiency-aware message explaining prediction reliability
-  - configVersion: Configuration version used for this computation
-  - signalQuality: Signal quality assessment
+### 2.17 每周卖家健康报告
+- **功能**：为卖家生成和交付自动化每周健康报告
+- **报告内容**：
+  - 每周健康评分摘要
+  - 异常频率和严重性分解
+  - 趋势分析和预测
+  - 行为模式洞察
+  - 可操作建议
+  - 快速理解的洞察摘要
+  - 洞察生命周期状态摘要
+  - 信号质量评估摘要
+- **交付方式**：电子邮件、仪表板通知、用于检索的 API 端点
+- **端点**：GET /reports/:seller/weekly\n- **配置快照**：每个报告包含用于生成的配置版本快照
 
-### 2.8 Automated Insight Engine with Summaries and Lifecycle Management
-- **Function**: Generate lightweight insights based on rule-based and probabilistic analysis
-- **Input Signals**:
-  - Anomaly scores
-  - FFT periodicity
-  - HFD complexity
-  - Recent trend slope
-- **Output**: Human-readable insight summaries explaining detected patterns and potential issues
-- **Insight Summaries**: Concise, actionable summaries for quick understanding
-- **Insight Lifecycle States**:
-  - Generated: Newly created insights
-  - Confirmed: Insights validated by subsequent data or user actions
-  - Expired: Insights no longer relevant due to time passage
-  - Superseded: Insights replaced by newer, more accurate insights
-- **State Transitions**: Automatic state management based on time, data updates, and user feedback
-- **Endpoint**: GET /insights/:seller/lifecycle to query insight status
+### 2.18 带固定默认值的警报驱动定价层级
+- **功能**：基于警报频率和严重性的动态定价层级系统
+- **层级结构**：数据驱动的层级定义（非基于逻辑）
+- **每层级固定默认值**：
+  - 免费层级：€0 - 标准功能、默认警报阈值、基本洞察、可嵌入组件上的轻品牌水印
+  - 基础层级：€50 - 增强功能、较低警报阈值、详细洞察、更快响应、可嵌入组件上的减少品牌\n  - 高级层级：€300 - 高级功能、自定义警报阈值、全面洞察、优先支持、可嵌入组件上的最小品牌
+- **定价因素**（在集中配置中定义）：
+  - 每月触发的警报数量
+  - 异常严重性级别
+  - 预测准确性要求
+  - 实时处理需求
+- **端点**：GET /pricing/:seller/tier
+\n### 2.19 专用异常端点
+- **端点**：POST /sell/anomaly\n- **功能**：用于向外部系统销售/公开异常检测结果的专用端点
+- **负载结构**：
+  - sellerId：卖家标识符（不透明/代理密钥）
+  - timeRange：异常检测的时间范围\n  - includeAttribution：布尔标志，包含根本原因分解
+- **响应格式**：\n  - anomalyScore：总体异常分数\n  - attribution：根本原因分解
+  - timeWindow：时间窗口定义
+  - dataSufficiency：数据充分性指标
+  - reproducibilityHash：用于验证的哈希
+  - confidenceMessage：置信度和充分性感知消息\n  - configVersion：使用的配置版本
+  - signalQuality：信号质量评估
+\n### 2.20 专用预测端点
+- **端点**：POST /sell/prediction
+- **功能**：用于向外部系统销售/公开预测结果的专用端点
+- **负载结构**：\n  - sellerId：卖家标识符（不透明/代理密钥）\n  - predictionHorizon：要预测的时间步数
+  - includeConfidenceBands：布尔标志，包含置信区间\n- **响应格式**：
+  - predictions：带时间戳的预测值数组
+  - confidenceBands：± 置信区间
+  - historicalCutoff：标记历史/预测边界的时间戳
+  - timeWindow：时间窗口定义
+  - dataSufficiency：数据充分性指标
+  - reproducibilityHash：用于验证的哈希
+  - confidenceMessage：置信度和充分性感知消息
+  - configVersion：使用的配置版本
+  - signalQuality：信号质量评估
+\n### 2.21 一键导出功能
+- **功能**：一键导出报告、洞察和分析数据
+- **导出格式**：PDF、电子邮件\n- **导出内容**：
+  - 异常报告
+  - 预测报告
+  - 健康评分报告
+  - 每周健康报告
+  - 洞察摘要
+  - 用于报告生成的配置快照
+- **端点**：\n  - POST /export/pdf：生成并下载 PDF 报告\n  - POST /export/email：通过电子邮件发送报告
+\n### 2.22 带防护栏的可嵌入组件
+- **功能**：提供可嵌入的 UI 组件，用于集成到外部仪表板或应用程序\n- **组件**：
+  - 异常图表小部件
+  - 预测图表小部件
+  - 健康评分小部件
+  - 警报通知小部件
+  - 事件日志小部件
+- **集成**：JavaScript SDK 或基于 iframe 的嵌入\n- **自定义**：支持主题自定义和配置选项
+- **软防护栏**：\n  - 每个嵌入密钥的速率限制（在集中配置中按层级定义）
+  - 免费/基础层级的轻品牌水印
+  - 默认只读范围（除非明确授予，否则无写访问权限）
+  - 需要嵌入密钥身份验证\n
+### 2.23 可审计配置管理
+- **功能**：跟踪和审计所有配置更改
+- **特性**：
+  - 配置表的版本控制
+  - 每个配置更改的生效时间戳
+  - 配置快照存储与报告\n  - 配置更改审计日志
+  - 回滚到以前配置版本的能力
+- **端点**：\n  - GET /config/versions：列出所有配置版本\n  - GET /config/version/:id：检索特定配置版本\n  - GET /config/audit：检索配置更改审计日志
+  - POST /config/rollback/:id：回滚到特定配置版本
 
-### 2.9 Anomaly Attribution (Root Cause Breakdown)
-- **Function**: Explain anomaly score composition
-- **Components**:
-  - FFT peak contribution percentage
-  - HFD complexity contribution percentage
-  - Trend deviation contribution percentage
-  - Smoothed deviation contribution percentage
+### 2.24 边缘案例检测作为信号质量\n- **功能**：检测并标记边缘案例作为低置信度信号机制，而非错误
+- **降级行为模式**：
+  - 恒定零值：标记为低信号机制
+  - 完美周期性：标记为潜在机器人活动信号
+  - 不可能的规律性：标记为异常信号模式
+- **处理**：边缘案例是信号，而非错误。它们代表低置信度机制，应作为信号质量指标呈现
+- **输出**：信号质量分数和边缘案例标志包含在所有分析响应中
+- **集成**：信号质量指标显示在仪表板中并包含在 API 响应中
 
-### 2.10 Predictive Alerts with Single Primary Trigger
-- **Function**: Proactive alert system based on primary trigger and contextual information
-- **Primary Trigger**: Anomaly score threshold (defined in centralized config)
-- **Contextual Information**: Trends, attribution, fingerprints, time windows provided as context, not additional triggers
-- **Alert Levels**: Defined by configuration table (data-driven), not conditional statements
-- **Alert Types**: Potential spike warnings, downtrend alerts, pattern shift notifications
-- **System Invariant**: All alerts must reference data sufficiency state
+### 2.25 系统性异常检测
+- **功能**：检测并标记与卖家分析分离的系统性问题
+- **系统性异常类型**：
+  - 突然模式变化：检测意外的数据结构变化
+  - 时间戳漂移：识别时钟同步问题
+  - 摄取突发：检测异常数据摄取模式
+- **处理**：标记系统健康问题而不污染卖家分析
+- **输出**：单独的系统健康指标和警报
+- **端点**：GET /system/health 查询系统性异常状态
+- **仪表板集成**：与卖家分析分离的系统健康面板
 
-### 2.11 Seller Health Score (Composite Index)
-- **Endpoint**: GET /metrics/:seller/health
-- **Function**: Calculate composite seller health score
-- **Scoring Factors**:
-  - Volatility level
-  - Anomaly frequency
-  - Predictive risk assessment
-  - Data consistency metrics
-- **Response Format**: { healthScore: 0-100, breakdown: {...}, timeWindow: {...}, dataSufficiency: {...}, confidenceMessage: "...", configVersion: "...", signalQuality: {...} }
+### 2.26 前端着陆页\n- **功能**：展示 Lush Analytics 平台的现代着陆页，具有重新设计的导航\n- **部分**：
+  - **英雄区**：\n    - 标题：主要价值主张
+    - 副标题：支持性描述
+    - 行动号召按钮：打开用户交互对话框
+  - **功能区**：
+    - 六个带图标的功能卡\n    - 突出关键平台能力
+    - **异常检测卡**：引用高级数学模型（不提及 AI 或机器学习）
+    - **预测洞察卡**：使用利用商业智能而非利用高级数学模型
+    - **隐私设计卡**：符合 GDPR，严格数据最小化。分析路径中无 PII——仅聚合数据上的行为信号。
+    - **高性能卡**：环形缓冲区架构，零每事件分配。概率缓存确保亚毫秒响应时间。
+  - **定价区**：
+    - 三个定价层级，明确区分：
+      - 免费层级：€0\n      - 基础层级：€50
+      - 高级层级：€300\n    - 使用欧元符号（€）显示定价
+    - **定价层级按钮行为**：
+      - **免费层级开始按钮**：点击此按钮将用户重定向到注册对话框。成功注册后，免费层级用户被重定向到仪表板页面。
+      - **付费层级订阅按钮**：点击这些按钮将用户重定向到注册对话框。成功注册后，付费层级用户被重定向到 Stripe 结账。完成 Stripe 设置后，用户被重定向到仪表板页面。
+  - **客户评价区**：
+    - 客户评价和成功案例\n  - **电子邮件注册表单**：
+    - 新闻通讯订阅或早期访问注册\n- **导航设计**：
+  - 导航样式位于主区域（无传统侧边栏）
+  - 简洁、现代的导航界面
+- **对话框行为**：
+  - 可通过点击取消按钮关闭对话框
+  - 可通过点击对话框外部任意位置关闭对话框
+- **响应式设计**：完全响应式布局，针对桌面和移动设备优化，设计美学灵感类似于 nfinitepaper.com
+- **样式**：与现有应用程序样式和设计系统保持一致
+- **性能优化**：对着陆页部分和组件应用懒加载\n\n### 2.27 用户身份验证系统
+- **功能**：安全的用户身份验证和授权\n- **特性**：
+  - 使用电子邮件和密码进行用户注册
+  - 使用电子邮件和密码进行用户登录
+  - **登录对话框上的密码重置功能及链接**
+  - 会话管理\n  - 基于 JWT 令牌的身份验证\n  - **注册后重定向**：成功注册后，用户根据所选定价层级重定向：
+    - 免费层级用户：重定向到仪表板页面
+    - 付费层级用户：重定向到 Stripe 结账，完成支付后重定向到仪表板页面
+- **登录对话框密码重置链接**：
+  - **位置**：位于没有账户？注册链接下方
+  - **文本**：忘记密码？重置密码\n  - **行为**：点击此链接打开密码重置对话框或重定向到密码重置页面
+- **端点**：
+  - POST /auth/register：用户注册
+  - POST /auth/login：用户登录
+  - POST /auth/logout：用户登出
+  - POST /auth/reset-password：密码重置请求
+  - POST /auth/confirm-reset：确认密码重置\n\n### 2.28 团队管理系统
+- **功能**：具有基于角色的访问控制的团队协作\n- **角色**：
+  - **管理员**：完整的团队管理权限
+    - 邀请新成员加入团队
+    - 从团队中移除成员\n    - 管理团队设置
+    - 创建和管理项目
+    - 向团队成员分配任务
+    - 对账用户定价层级
+    - 无错误访问管理员面板
+    - **在层级对账部分查看所有用户数据和计划详情**
+  - **成员**：有限权限\n    - 查看团队设置（只读）
+    - 查看项目和任务\n    - 更新已分配的任务
+    - 无法邀请/移除成员
+    - 无法修改团队设置
+    - 无法对账定价层级
+    - 无法访问管理员面板
+    - **无法查看其他用户的数据或计划详情**
+- **特性**：
+  - 团队创建\n  - 通过电子邮件邀请成员
+  - 管理员移除成员
+  - 角色分配和管理
+  - 团队设置管理（仅管理员）
+  - **管理员面板访问控制**：当具有管理员角色的登录用户点击管理员面板按钮时，应授予访问权限而不显示错误消息。必须实施适当的角色验证和访问控制。
+  - **层级对账数据可见性**：只有管理员用户可以在层级对账部分查看所有用户数据和计划详情。普通用户无法访问此信息。
+- **端点**：
+  - POST /teams：创建新团队
+  - GET /teams/:teamId：获取团队详情
+  - POST /teams/:teamId/invite：邀请成员（仅管理员）
+  - DELETE /teams/:teamId/members/:userId：移除成员（仅管理员）
+  - GET /teams/:teamId/members：列出团队成员
+  - PUT /teams/:teamId/settings：更新团队设置（仅管理员）
+\n### 2.29 项目管理系统
+- **功能**：在团队上下文中创建和管理项目
+- **特性**：
+  - 在团队上下文中创建项目
+  - 项目详情（名称、描述、创建日期）
+  - 项目所有权和访问控制
+  - 列出团队的所有项目
+- **权限**：
+  - 所有团队成员可以查看项目
+  - 管理员可以创建和管理项目
+- **端点**：
+  - POST /teams/:teamId/projects：创建新项目
+  - GET /teams/:teamId/projects：列出所有项目
+  - GET /projects/:projectId：获取项目详情
+  - PUT /projects/:projectId：更新项目（仅管理员）
+  - DELETE /projects/:projectId：删除项目（仅管理员）
+\n### 2.30 带实时更新的任务管理系统
+- **功能**：任务创建、分配和跟踪，具有实时同步\n- **任务属性**：
+  - **title**：任务标题（必填）
+  - **description**：任务描述（可选）
+  - **status**：任务状态（必填）
+    - todo：任务未开始
+    - in progress：任务进行中
+    - completed：任务已完成
+  - **assigned user**：分配给任务的用户（可选）
+  - **created date**：任务创建时间戳\n  - **updated date**：任务最后更新时间戳
+- **特性**：
+  - 在项目中创建任务
+  - 向团队成员分配任务\n  - 更新任务状态
+  - 更新任务详情（标题、描述）
+  - 重新分配任务\n  - 使用 Supabase Realtime 进行实时任务更新
+  - 按状态筛选任务
+  - 按已分配用户筛选任务
+- **实时同步**：\n  - 任务状态更改实时广播给所有团队成员
+  - 任务分配在所有连接的客户端上即时更新
+  - 任务更新（标题、描述）立即同步
+- **端点**：
+  - POST /projects/:projectId/tasks：创建新任务\n  - GET /projects/:projectId/tasks：列出项目的所有任务
+  - GET /tasks/:taskId：获取任务详情
+  - PUT /tasks/:taskId：更新任务\n  - DELETE /tasks/:taskId：删除任务
+  - PUT /tasks/:taskId/status：更新任务状态\n  - PUT /tasks/:taskId/assign：向用户分配任务
+\n### 2.31 仪表板任务分析
+- **功能**：在仪表板上显示任务完成进度和已分配任务
+- **特性**：
+  - **任务完成进度**：\n    - 分配给当前用户的所有任务的总体完成百分比
+    - 显示完成率的视觉进度条
+    - 按状态分解（todo、in progress、completed）\n  - **已分配任务概览**：
+    - 分配给当前用户的所有任务列表
+    - 任务状态指示器（彩色徽章）
+    - 快速任务状态更新功能
+    - 按状态筛选任务
+    - 按创建日期或截止日期排序任务
+- **实时更新**：任务分析随任务修改实时更新
+- **端点**：GET /dashboard/tasks/analytics\n
+### 2.32 Stripe 支付集成
+- **功能**：定价层级订阅的支付处理
+- **特性**：
+  - Stripe Checkout 集成用于订阅支付
+  - 支持所有定价层级（免费、基础、高级）
+  - 订阅管理（升级、降级、取消）
+  - 支付方式管理\n  - 发票生成和历史记录
+  - 支付事件的 Webhook 处理
+  - 基于订阅状态的自动层级访问控制
+  - **支付通知**：显示指示支付成功或失败的通知\n  - **通知自动消失**：通知在 5 秒后自动消失
+  - **支付系统配置验证**：在处理支付前验证 Stripe API 密钥和配置
+  - **错误处理**：当支付系统未正确配置时显示清晰的错误消息\n- **支付流程**：
+  1. 用户从着陆页选择定价层级（免费层级开始按钮或付费层级订阅按钮）
+  2. 用户被重定向到注册对话框
+  3. 用户完成注册\n  4. **免费层级流程**：用户直接重定向到仪表板页面
+  5. **付费层级流程**：\n     - 验证支付系统配置（Stripe API 密钥存在且有效）
+     - 用户被重定向到 Stripe Checkout\n     - 用户完成支付
+     - Webhook 确认支付
+     - 显示成功/失败通知（5 秒后自动消失）
+     - 用户层级自动更新
+     - 用户被重定向到仪表板页面
+     - 授予层级特定功能的访问权限
+- **配置错误处理**：\n  - 如果 Stripe API 密钥缺失或无效，显示错误：支付系统未配置。请联系支持。
+  - 当配置无效时阻止支付流程启动
+  - 记录配置错误供管理员审查
+- **端点**：
+  - POST /billing/checkout：创建 Stripe Checkout 会话
+  - POST /billing/portal：创建 Stripe 客户门户会话
+  - POST /billing/webhook：处理 Stripe webhook 事件
+  - GET /billing/subscription：获取当前订阅详情
+  - POST /billing/cancel：取消订阅
+  - GET /billing/config/status：检查支付系统配置状态
 
-### 2.12 Behavioral Fingerprinting
-- **Function**: Identify and track seller behavior patterns
-- **Analysis Methods**:
-  - FFT + HFD + temporal entropy combination
-- **Detection Capabilities**:
-  - Bot cluster identification
-  - Repetitive manipulation patterns
-  - Sudden strategy changes
-- **Output**: Behavioral fingerprint signature and pattern classification
-- **Data Minimization**: Fingerprints based only on aggregated behavioral signals, no PII
-
-### 2.13 Intelligent Sampling and Adaptive Resolution
-- **Function**: Automatically adjust analysis computation cost based on seller activity
-- **Adaptive Logic** (defined in centralized config):
-  - High activity sellers: Full resolution analysis
-  - Medium activity sellers: Medium sampling
-  - Low activity sellers: Reduced sampling frequency
-- **Advantage**: Optimize system resources while maintaining accuracy
-
-### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration
-- **Function**: Real-time dashboard updates with AnomalyAlert component
-- **Features**:
-  - Real-time anomaly notifications
-  - Real-time metrics updates
-  - Event log display with pagination/infinite scroll
-  - **Time Window Display**: Display explicit time window definition in UI (start time, end time, window size)
-  - **Data Sufficiency Metrics**: Display explicit data sufficiency state (sufficient/insufficient, progress bar showing current vs required data points)
-  - **Rate Limit and Backpressure Visibility**: Display current rate limit status, remaining quota, backpressure metrics, and queue depth
-  - **Confidence and Sufficiency-Aware Messaging**: Display contextual messages explaining result reliability based on data quality
-  - **Insight Lifecycle Display**: Display insight states (Generated, Confirmed, Expired, Superseded) with visual indicators
-  - **Signal Quality Metrics**: Display edge case flags and degraded mode warnings
-  - **Task Completion Progress**: Display overall completion percentage for tasks assigned to current user
-  - **Assigned Tasks Overview**: Display list of tasks assigned to current user with status indicators
-  - **Behavioral Fingerprinting Capabilities**: Implement behavioral fingerprinting functionality on dashboard, displaying seller behavior pattern analysis results
-
-### 2.15 Event Log Management
-- **Function**: Display and manage event logs on dashboard
-- **Features**:
-  - Pagination support
-  - Infinite scroll capability
-  - Efficient data loading for large volumes of events
-- **Data Minimization**: Display only aggregated behavioral signals, no PII
-
-### 2.16 Decision Hooks
-- **Function**: Provide extensible decision hooks for custom business logic integration
-- **Hook Points**:
-  - Pre-anomaly detection hook: Execute custom logic before anomaly detection
-  - Post-anomaly detection hook: Execute custom logic after anomaly detection
-  - Pre-prediction hook: Execute custom logic before prediction generation
-  - Post-prediction hook: Execute custom logic after prediction generation
-  - Alert trigger hook: Execute custom logic when alert is triggered
-- **Use Cases**: Custom notification routing, third-party integrations, business rule execution, audit logging
-
-### 2.17 Weekly Seller Health Reports
-- **Function**: Generate and deliver automated weekly health reports for sellers
-- **Report Content**:
-  - Weekly health score summary
-  - Anomaly frequency and severity breakdown
-  - Trend analysis and predictions
-  - Behavioral pattern insights
-  - Actionable recommendations
-  - Insight summaries for quick understanding
-  - Insight lifecycle state summary
-  - Signal quality assessment summary
-- **Delivery Methods**: Email, dashboard notifications, API endpoint for retrieval
-- **Endpoint**: GET /reports/:seller/weekly
-- **Configuration Snapshot**: Each report includes configuration version snapshot used for generation
-
-### 2.18 Alert-Driven Pricing Tiers with Fixed Defaults
-- **Function**: Dynamic pricing tier system based on alert frequency and severity
-- **Tier Structure**: Data-driven tier definitions (not logic-based)
-- **Fixed Defaults Per Tier**:
-  - Free Tier: €0 - Standard features, default alert thresholds, basic insights, light branding watermark on embeddable components
-  - Basic Tier: €50 - Enhanced features, lower alert thresholds, detailed insights, faster response, reduced branding on embeddable components
-  - Pro Tier: €300 - Premium features, custom alert thresholds, comprehensive insights, priority support, minimal branding on embeddable components
-- **Pricing Factors** (defined in centralized config):
-  - Number of alerts triggered per month
-  - Anomaly severity levels
-  - Prediction accuracy requirements
-  - Real-time processing demands
-- **Endpoint**: GET /pricing/:seller/tier
-
-### 2.19 Dedicated Anomaly Endpoint
-- **Endpoint**: POST /sell/anomaly
-- **Function**: Dedicated endpoint for selling/exposing anomaly detection results to external systems
-- **Payload Structure**:
-  - sellerId: Seller identifier (opaque/proxy key)
-  - timeRange: Time range for anomaly detection
-  - includeAttribution: Boolean flag to include root cause breakdown
-- **Response Format**:
-  - anomalyScore: Overall anomaly score
-  - attribution: Root cause breakdown
-  - timeWindow: Time window definition
-  - dataSufficiency: Data sufficiency metrics
-  - reproducibilityHash: Hash for verification
-  - confidenceMessage: Confidence and sufficiency-aware message
-  - configVersion: Configuration version used
-  - signalQuality: Signal quality assessment
-
-### 2.20 Dedicated Prediction Endpoint
-- **Endpoint**: POST /sell/prediction
-- **Function**: Dedicated endpoint for selling/exposing prediction results to external systems
-- **Payload Structure**:
-  - sellerId: Seller identifier (opaque/proxy key)
-  - predictionHorizon: Number of time steps to predict
-  - includeConfidenceBands: Boolean flag to include confidence intervals
-- **Response Format**:
-  - predictions: Array of predicted values with timestamps
-  - confidenceBands: ± confidence intervals
-  - historicalCutoff: Timestamp marking history/prediction boundary
-  - timeWindow: Time window definition
-  - dataSufficiency: Data sufficiency metrics
-  - reproducibilityHash: Hash for verification
-  - confidenceMessage: Confidence and sufficiency-aware message
-  - configVersion: Configuration version used
-  - signalQuality: Signal quality assessment
-
-### 2.21 One-Click Export Functionality
-- **Function**: One-click export of reports, insights, and analytics data
-- **Export Formats**: PDF, Email
-- **Export Content**:
-  - Anomaly reports
-  - Prediction reports
-  - Health score reports
-  - Weekly health reports
-  - Insight summaries
-  - Configuration snapshot used for report generation
-- **Endpoints**:
-  - POST /export/pdf: Generate and download PDF report
-  - POST /export/email: Send report via email
-
-### 2.22 Embeddable Components with Guardrails
-- **Function**: Provide embeddable UI components for integration into external dashboards or applications
-- **Components**:
-  - Anomaly chart widget
-  - Prediction chart widget
-  - Health score widget
-  - Alert notification widget
-  - Event log widget
-- **Integration**: JavaScript SDK or iframe-based embedding
-- **Customization**: Support theme customization and configuration options
-- **Soft Guardrails**:
-  - Rate limiting per embed key (defined by tier in centralized config)
-  - Light branding watermark for Free/Basic tiers
-  - Default read-only scope (no write access unless explicitly granted)
-  - Embed key authentication required
-
-### 2.23 Auditable Configuration Management
-- **Function**: Track and audit all configuration changes
-- **Features**:
-  - Version control for configuration tables
-  - Effective timestamp for each configuration change
-  - Configuration snapshot storage with reports
-  - Configuration change audit log
-  - Ability to rollback to previous configuration versions
-- **Endpoints**:
-  - GET /config/versions: List all configuration versions
-  - GET /config/version/:id: Retrieve specific configuration version
-  - GET /config/audit: Retrieve configuration change audit log
-  - POST /config/rollback/:id: Rollback to specific configuration version
-
-### 2.24 Edge Case Detection as Signal Quality
-- **Function**: Detect and flag edge cases as low confidence signal mechanisms, not errors
-- **Degraded Behavior Patterns**:
-  - Constant zero values: Flagged as low signal mechanism
-  - Perfect periodicity: Flagged as potential bot activity signal
-  - Impossible regularity: Flagged as anomalous signal pattern
-- **Handling**: Edge cases are signals, not errors. They represent low confidence mechanisms and should be presented as signal quality metrics
-- **Output**: Signal quality score and edge case flags included in all analysis responses
-- **Integration**: Signal quality metrics displayed in dashboard and included in API responses
-
-### 2.25 Systemic Anomaly Detection
-- **Function**: Detect and flag systemic issues separate from seller analytics
-- **Systemic Anomaly Types**:
-  - Sudden pattern changes: Detect unexpected data structure changes
-  - Timestamp drift: Identify clock synchronization issues
-  - Ingestion bursts: Detect abnormal data ingestion patterns
-- **Handling**: Flag system health issues without polluting seller analytics
-- **Output**: Separate system health metrics and alerts
-- **Endpoint**: GET /system/health to query systemic anomaly status
-- **Dashboard Integration**: System health panel separate from seller analytics
-
-### 2.26 Frontend Landing Page
-- **Function**: Modern landing page showcasing Lush Analytics platform with redesigned navigation
-- **Sections**:
-  - **Hero Section**:
-    - Headline: Primary value proposition
-    - Subheadline: Supporting description
-    - Call-to-action button: Opens user interaction dialog
-  - **Features Section**:
-    - Six feature cards with icons
-    - Highlight key platform capabilities
-    - **Anomaly Detection Card**: Reference advanced mathematical models (no mention of AI or machine learning)
-    - **Predictive Insights Card**: Use "leveraging business intelligence" instead of "leveraging advanced mathematical models"
-    - **Privacy by Design Card**: GDPR-compliant with strict data minimization. No PII in analysis path—behavioral signals on aggregated data only.
-    - **High Performance Card**: Ring buffer architecture with zero per-event allocation. Probabilistic caching ensures sub-millisecond response times.
-  - **Pricing Section**:
-    - Three pricing tiers with clear differentiation:
-      - Free Tier: €0
-      - Basic Tier: €50
-      - Pro Tier: €300
-    - Display pricing using Euro symbol (€)
-    - **Pricing Tier Button Behavior**:
-      - **Free Tier Get Started Button**: Clicking this button redirects user to signup dialog. After successful signup, Free tier users are redirected to Dashboard page.
-      - **Paid Tier Subscribe Buttons**: Clicking these buttons redirects user to signup dialog. After successful signup, paid tier users are redirected to Stripe checkout. After completing Stripe setup, users are redirected to Dashboard page.
-  - **Customer Testimonials Section**:
-    - Customer testimonials and success stories
-  - **Email Signup Form**:
-    - Newsletter subscription or early access registration
-- **Navigation Design**:
-  - Navigation styled in main area (no traditional sidebar)
-  - Clean, modern navigation interface
-- **Dialog Behavior**:
-  - Dialogs can be closed by clicking cancel button
-  - Dialogs can be closed by clicking anywhere outside the dialog
-- **Responsive Design**: Fully responsive layout optimized for desktop and mobile devices, design aesthetics inspired by nfinitepaper.com
-- **Styling**: Consistent with existing application styles and design system
-- **Performance Optimization**: Apply lazy loading to landing page sections and components
-
-### 2.27 User Authentication System
-- **Function**: Secure user authentication and authorization
-- **Features**:
-  - User registration with email and password
-  - User login with email and password
-  - **Password reset functionality on login dialog with link**
-  - Session management
-  - JWT token-based authentication
-  - **Post-Signup Redirect**: After successful signup, users are redirected based on selected pricing tier:
-    - Free tier users: Redirected to Dashboard page
-    - Paid tier users: Redirected to Stripe checkout, then to Dashboard page after payment completion
-- **Login Dialog Password Reset Link**:
-  - **Location**: Below "Don't have an account? Sign up" link
-  - **Text**: "Forgot password? Reset password"
-  - **Behavior**: Clicking this link opens password reset dialog or redirects to password reset page
-- **Endpoints**:
-  - POST /auth/register: User registration
-  - POST /auth/login: User login
-  - POST /auth/logout: User logout
-  - POST /auth/reset-password: Password reset request
-  - POST /auth/confirm-reset: Confirm password reset
-
-### 2.28 Team Management System
-- **Function**: Team collaboration with role-based access control
-- **Roles**:
-  - **Admin**: Full team management permissions
-    - Invite new members to team
-    - Remove members from team
-    - Manage team settings
-    - Create and manage projects
-    - Assign tasks to team members
-    - Reconcile user pricing tiers
-    - Access Admin Panel without errors
-    - **View all user data and plan details in Tier Reconciliation section**
-  - **Member**: Limited permissions
-    - View team settings (read-only)
-    - View projects and tasks
-    - Update assigned tasks
-    - Cannot invite/remove members
-    - Cannot modify team settings
-    - Cannot reconcile pricing tiers
-    - Cannot access Admin Panel
-    - **Cannot view other users' data or plan details**
-- **Features**:
-  - Team creation
-  - Member invitation via email
-  - Member removal by admin
-  - Role assignment and management
-  - Team settings management (admin only)
-  - **Admin Panel Access Control**: When logged-in user with admin role clicks Admin Panel button, access should be granted without error messages. Proper role validation and access control must be implemented.
-  - **Tier Reconciliation Data Visibility**: Only admin users can view all user data and plan details in Tier Reconciliation section. Regular users cannot access this information.
-- **Endpoints**:
-  - POST /teams: Create new team
-  - GET /teams/:teamId: Get team details
-  - POST /teams/:teamId/invite: Invite member (admin only)
-  - DELETE /teams/:teamId/members/:userId: Remove member (admin only)
-  - GET /teams/:teamId/members: List team members
-  - PUT /teams/:teamId/settings: Update team settings (admin only)
-
-### 2.29 Project Management System
-- **Function**: Create and manage projects within team context
-- **Features**:
-  - Create projects within team context
-  - Project details (name, description, creation date)
-  - Project ownership and access control
-  - List all projects for a team
-- **Permissions**:
-  - All team members can view projects
-  - Admins can create and manage projects
-- **Endpoints**:
-  - POST /teams/:teamId/projects: Create new project
-  - GET /teams/:teamId/projects: List all projects
-  - GET /projects/:projectId: Get project details
-  - PUT /projects/:projectId: Update project (admin only)
-  - DELETE /projects/:projectId: Delete project (admin only)
-
-### 2.30 Task Management System with Real-time Updates
-- **Function**: Task creation, assignment, and tracking with real-time synchronization
-- **Task Attributes**:
-  - **title**: Task title (required)
-  - **description**: Task description (optional)
-  - **status**: Task status (required)
-    - todo: Task not started
-    - in progress: Task in progress
-    - completed: Task completed
-  - **assigned user**: User assigned to task (optional)
-  - **created date**: Task creation timestamp
-  - **updated date**: Task last update timestamp
-- **Features**:
-  - Create tasks within projects
-  - Assign tasks to team members
-  - Update task status
-  - Update task details (title, description)
-  - Reassign tasks
-  - Real-time task updates using Supabase Realtime
-  - Filter tasks by status
-  - Filter tasks by assigned user
-- **Real-time Synchronization**:
-  - Task status changes broadcast in real-time to all team members
-  - Task assignments update instantly across all connected clients
-  - Task updates (title, description) synchronize immediately
-- **Endpoints**:
-  - POST /projects/:projectId/tasks: Create new task
-  - GET /projects/:projectId/tasks: List all tasks for project
-  - GET /tasks/:taskId: Get task details
-  - PUT /tasks/:taskId: Update task
-  - DELETE /tasks/:taskId: Delete task
-  - PUT /tasks/:taskId/status: Update task status
-  - PUT /tasks/:taskId/assign: Assign task to user
-
-### 2.31 Dashboard Task Analytics
-- **Function**: Display task completion progress and assigned tasks on dashboard
-- **Features**:
-  - **Task Completion Progress**:
-    - Overall completion percentage for all tasks assigned to current user
-    - Visual progress bar showing completion rate
-    - Breakdown by status (todo, in progress, completed)
-  - **Assigned Tasks Overview**:
-    - List of all tasks assigned to current user
-    - Task status indicators (colored badges)
-    - Quick task status update functionality
-    - Filter tasks by status
-    - Sort tasks by creation date or due date
-- **Real-time Updates**: Task analytics update in real-time as tasks are modified
-- **Endpoint**: GET /dashboard/tasks/analytics
-
-### 2.32 Stripe Payment Integration
-- **Function**: Payment processing for pricing tier subscriptions
-- **Features**:
-  - Stripe Checkout integration for subscription payments
-  - Support for all pricing tiers (Free, Basic, Pro)
-  - Subscription management (upgrade, downgrade, cancel)
-  - Payment method management
-  - Invoice generation and history
-  - Webhook handling for payment events
-  - Automatic tier access control based on subscription status
-  - **Payment Notifications**: Display notifications indicating payment success or failure
-  - **Notification Auto-dismiss**: Notifications automatically disappear after 5 seconds
-  - **Payment System Configuration Validation**: Validate Stripe API keys and configuration before processing payments
-  - **Error Handling**: Display clear error messages when payment system is not properly configured
-- **Payment Flow**:
-  1. User selects pricing tier from landing page (Free tier Get Started button or paid tier Subscribe buttons)
-  2. User is redirected to signup dialog
-  3. User completes signup
-  4. **Free Tier Flow**: User is directly redirected to Dashboard page
-  5. **Paid Tier Flow**:
-     - Validate payment system configuration (Stripe API keys exist and valid)
-     - User is redirected to Stripe Checkout
-     - User completes payment
-     - Webhook confirms payment
-     - Display success/failure notification (auto-dismiss after 5 seconds)
-     - User tier is automatically updated
-     - User is redirected to Dashboard page
-     - Access to tier-specific features is granted
-- **Configuration Error Handling**:
-  - If Stripe API keys are missing or invalid, display error: "Payment system not configured. Please contact support."
-  - Prevent payment flow from initiating when configuration is invalid
-  - Log configuration errors for admin review
-- **Endpoints**:
-  - POST /billing/checkout: Create Stripe Checkout session
-  - POST /billing/portal: Create Stripe customer portal session
-  - POST /billing/webhook: Handle Stripe webhook events
-  - GET /billing/subscription: Get current subscription details
-  - POST /billing/cancel: Cancel subscription
-  - GET /billing/config/status: Check payment system configuration status
-
-### 2.33 Webhook Registration and Management
-- **Function**: Webhooks as delivery mechanism for computed facts, not triggers
-- **Core Principle**: Webhooks are side effects of insight state changes, never as inputs
-- **Design Goals (Non-negotiable)**:
-  - Purely derived (never raw)
-  - Deterministic (same input → same payload)
-  - Self-validating (hash + config)
-  - Window-scoped
-  - Side-effect safe
-- **Canonical Webhook Envelope**:
+### 2.33 Webhook 注册和管理
+- **功能**：Webhook 作为计算事实的交付机制，而非触发器
+- **核心原则**：Webhook 是洞察状态变化的副作用，从不作为输入
+- **设计目标（不可协商）**：
+  - 纯派生（从不原始）
+  - 确定性（相同输入 → 相同负载）
+  - 自验证（哈希 + 配置）
+  - 窗口范围\n  - 副作用安全
+- **规范 Webhook 信封**：
 ```json
 {
-  "id": "whk_01HZX8F7W9M3Y7T4Q2A6B9",
-  "type": "alert_triggered",
-  "sellerId": "sel_8f92d0c3",
-  "emittedAt": 1737225600000,
-  "sequence": 412,
-  "timeWindow": {
-    "start": 1737222000000,
-    "end": 1737225600000,
-    "size": 3600000
+  \"id\": \"whk_01HZX8F7W9M3Y7T4Q2A6B9\",
+  \"type\": \"alert_triggered\",
+  \"sellerId\": \"sel_8f92d0c3\",
+  \"emittedAt\": 1737225600000,
+  \"sequence\": 412,
+  \"timeWindow\": {
+    \"start\": 1737222000000,
+    \"end\": 1737225600000,
+    \"windowSizeMs\": 3600000
   },
-  "payload": {
-    "anomalyScore": 0.87,
-    "attribution": {...},
-    "dataSufficiency": "sufficient",
-    "reproducibilityHash": "sha256:abc123..."
+  \"payload\": {},
+  \"dataSufficiency\": {
+    \"status\": \"sufficient\",
+    \"requiredPoints\": 120,
+    \"actualPoints\": 147
   },
-  "configVersion": "v2.3.1",
-  "signature": "hmac-sha256:xyz789..."
+  \"signalQuality\": {
+    \"score\": 0.91,
+    \"flags\": []\n  },
+  \"configVersion\": \"cfg_2024_11_03_0012\",
+  \"reproducibilityHash\": \"sha256:9d3a7c1e8f…\",
+  \"signature\": \"hmac-sha256:ab91e5...\"\n}
+```
+- **为何这保持确定性**：
+  - sequence 对每个卖家单调递增
+  - emittedAt 从窗口结束派生
+  - payload 仅包含计算输出
+  - reproducibilityHash 让接收者验证重新计算
+  - signature 在规范 JSON 序列化上计算
+- **安全事件类型**：
+  - anomaly_detected：检测到异常
+  - alert_triggered：触发警报
+  - prediction_updated：更新预测
+  - insight_state_changed：洞察状态变化
+  - weekly_report_ready：每周报告准备就绪
+  - pricing_tier_changed：定价层级变化
+- **特定事件负载**：
+  - **alert_triggered**：\n```json
+{
+  \"alertLevel\": \"warning\",
+  \"alertType\": \"spike_detected\",
+  \"anomalyScore\": 0.87,
+  \"threshold\": 0.75,
+  \"attribution\": {
+    \"fft\": 0.41,
+    \"hfd\": 0.29,
+    \"trend\": 0.17,
+    \"smoothedDeviation\": 0.13
+  },
+  \"healthImpact\": -12\n}
+```
+  - **prediction_updated**：
+```json
+{
+  \"horizon\": 24,
+  \"unit\": \"hour\",
+  \"predictions\": [120, 118, 121, 130],
+  \"confidenceBands\": {\n    \"lower\": [100, 99, 102, 110],
+    \"upper\": [140, 137, 142, 150]
+  }\n}
+```
+  - **insight_state_changed**：
+```json
+{
+  \"insightId\": \"ins_01HZV7R8\",
+  \"previousState\": \"generated\",
+  \"newState\": \"confirmed\",
+  \"reason\": \"subsequent_data_confirmed\"\n}
+```
+- **Webhook 负载要求**：
+  所有 webhook 负载必须包含：
+  - reproducibilityHash：可重现性哈希
+  - configVersion：配置版本
+  - timeWindow：时间窗口\n  - dataSufficiency：数据充分性
+  - signalQuality：信号质量
+- **防护栏**：
+  - **异步 + 尽力交付**：Webhook 交付是异步的，采用尽力策略
+  - **带退避的重试**：交付失败时采用退避策略重试
+  - **死信队列**：持续失败的 webhook 进入死信队列
+  - **交付失败不影响分析**：Webhook 交付失败从不影响分析计算
+  - **不触发重新计算**：Webhook 无法触发重新计算，仅观察状态转换
+  - **不从 DSP 循环发出**：Webhook 从不从 DSP 循环内部发出
+  - **确定性排序**：如果两个洞察发生在同一窗口，排序必须定义（时间戳 + 类型优先级）
+- **硬 Webhook 不变量**：
+  - 窗口粒度以下无原始时间戳
+  - 无每事件标识符
+  - 不触发重新计算
+  - 始终可重现
+  - 始终可审计
+- **端点**：
+  - POST /webhooks：注册新 webhook
+  - GET /webhooks：列出所有已注册的 webhook
+  - GET /webhooks/:id：获取 webhook 详情
+  - PUT /webhooks/:id：更新 webhook 配置
+  - DELETE /webhooks/:id：删除 webhook\n  - GET /webhooks/:id/deliveries：查看 webhook 交付历史
+  - POST /webhooks/:id/test：测试 webhook 交付
+\n### 2.34 漏斗分析
+- **功能**：漏斗是事件类型的聚合\n- **核心原则**：
+  - 漏斗是确定性的
+  - 漏斗是可重现的
+  - 漏斗是可解释的
+- **设计决策**：
+  - **声明式**：漏斗必须是声明式的
+  - **配置支持**：漏斗定义存储在集中配置中
+  - **窗口绑定**：漏斗必须绑定到时间窗口
+- **漏斗 DSL（配置原生）**：
+```yaml
+funnels:
+  checkout_conversion_v1:
+    version: 1
+    description: View → Checkout → Payment
+    window:\n      sizeMs: 86400000
+      slideMs: 3600000
+    steps:
+      - id: view
+        eventType: VIEW
+        minCount: 100
+      - id: checkout
+        eventType: CHECKOUT_STARTED
+        minRatioFrom: view
+        minRatio: 0.05
+      - id: payment\n        eventType: PAYMENT_SUCCEEDED
+        minRatioFrom: checkout
+        minRatio: 0.6
+    dropoffAttribution:
+      enabled: true
+    sufficiency:
+      minTotalEvents: 300
+    output:
+      includeConfidence: true
+      includeAttribution: true
+```
+- **漏斗评估规则（确定性）**：
+  - 步骤严格按顺序评估
+  - 比率从同一时间窗口计算
+  - 无跨窗口连接
+  - 无用户级拼接
+  - 无推断路径
+- **API 形状**：
+  - **预定义漏斗模板**：每层级的预定义漏斗模板
+  - **卖家可选但受约束的步骤集**：卖家可以选择步骤但受约束
+  - **集中配置**：\n    - 最小数据要求
+    - 步骤排序规则
+    - 步骤之间的超时\n- **约束**：
+  - **步骤必须在时间上单调**：步骤必须按时间顺序排列\n  - **漏斗窗口必须与环形缓冲区窗口对齐**：漏斗窗口必须与环形缓冲区窗口对齐
+  - **漏斗输出始终包含**：\n    - 流失归因：每步的流失原因分析
+    - 每步充分性：每步的数据充分性指标
+    - 置信度消息：基于数据质量的置信度消息\n- **端点**：
+  - GET /funnels/templates：列出预定义漏斗模板
+  - POST /funnels：创建自定义漏斗（受约束）
+  - GET /funnels/:id：获取漏斗详情
+  - GET /funnels/:id/analysis：执行漏斗分析\n  - GET /metrics/:seller/funnels：获取卖家的漏斗分析结果
+- **响应格式**：
+  - steps：漏斗步骤数组
+  - conversionRates：每步的转化率
+  - dropOffAttribution：流失归因分析
+  - dataSufficiency：每步的数据充分性\n  - confidenceMessage：置信度消息
+  - timeWindow：时间窗口定义
+  - reproducibilityHash：可重现性哈希
+  - configVersion：配置版本
+  - signalQuality：信号质量评估
+\n### 2.35 Webhook 量映射到定价层级
+- **概念模型**：Webhook 使用被视为下游计算放大\n- **跟踪的指标**（每个卖家，每月）：
+  - totalDeliveries：总 webhook 交付次数
+  - successfulDeliveries：成功的 webhook 交付次数\n  - failedDeliveries：失败的 webhook 交付次数
+  - uniqueEventTypes：唯一事件类型数量
+  - peakHourlyRate：峰值每小时交付率
+- **层级映射**（数据驱动，存储在集中配置中）：
+  - 免费层级：0 月度 webhook 交付，无 webhook\n  - 基础层级：≤ 5,000 月度 webhook 交付，仅 alert_triggered
+  - 高级层级：≤ 50,000 月度 webhook 交付，警报 + 预测
+- **执行模型**：
+  - 超出层级限制的 Webhook 被确定性丢弃
+  - 丢弃原因被记录并在仪表板中显示
+  - 丢弃从不影响分析\n  - 丢弃作为使用信号可见
+- **定价端点公开**：
+```json
+{
+  \"tier\": \"premium\",
+  \"webhookUsage\": {
+    \"used\": 38112,
+    \"limit\": 50000,
+    \"remaining\": 11888
+  }
 }
 ```
-- **Features**:
-  - Register webhook endpoints for specific event types
-  - Manage webhook subscriptions (create, update, delete)
-  - Webhook delivery retry logic with exponential backoff
-  - Webhook event history and logs
-  - Webhook signature verification for security
-  - Support for multiple webhook endpoints per seller
-- **Event Types**:
-  - alert_triggered: When anomaly alert is triggered
-  - prediction_generated: When new prediction is generated
-  - health_score_updated: When seller health score is updated
-  - insight_generated: When new insight is generated
-  - weekly_report_ready: When weekly report is generated
-- **Endpoints**:
-  - POST /webhooks: Register new webhook endpoint
-  - GET /webhooks: List all webhook subscriptions
-  - GET /webhooks/:id: Get webhook details
-  - PUT /webhooks/:id: Update webhook configuration
-  - DELETE /webhooks/:id: Delete webhook subscription
-  - GET /webhooks/:id/logs: Get webhook delivery logs
+\n### 2.36 管理员层级对账系统
+- **功能**：基于当前使用指标和定价策略的管理员触发层级重新计算
+- **核心原则**：层级是派生状态，而非手动属性
+- **心智模型**：
+```\n使用指标\n+ 定价策略
++ 宽限规则
+----------------
+= 有效层级
+```
+- **管理员操作**：
+  - **按钮标签**：重新计算层级或应用定价策略
+  - **确认文本**：这将根据当前使用情况和定价规则重新计算用户的层级。不会修改任何数据。
+  - **行为**：立即强制层级计算，而非等待计划作业\n- **层级状态模型**：
+```typescript
+interface TierState {
+  effectiveTier: \"free\" | \"basic\" | \"premium\" | \"business\"
+  pricingVersion: string
+  computedAt: number
+  source: \"scheduled\" | \"admin_reconcile\"
+}\n```
+- **计算过程**：
+  1. 加载当前使用指标（webhook、API 调用、警报等）
+  2. 加载当前定价配置
+  3. 基于使用情况和策略计算有效层级
+  4. 持久化：\n     - effectiveTier\n     - tierComputedAt
+     - pricingVersion
+     - source（admin_reconcile）
+  5. 发出事件：tier.reconciled
+- **管理员面板可见性**：
+  - **仅管理员访问**：只有具有管理员角色的用户可以查看层级对账部分
+  - **所有用户数据显示**：管理员用户可以在层级对账部分查看所有用户数据和计划详情
+  - **普通用户限制**：普通用户（非管理员）无法访问或查看层级对账部分中的任何用户数据或计划详情
+  - 当前层级\n  - 使用情况与限制
+  - 应用的定价规则
+  - 最后对账来源
+  - 下次计划对账\n- **权益系统**（与层级对账分离）：
+```typescript
+interface Entitlement {
+  type: \"webhook_bonus\" | \"prediction_bonus\"
+  amount: number
+  expiresAt?: number
+  reason: string
+}
+```
+  - 管理员面板允许：
+    - 授予权益
+    - 设置到期时间
+    - 附加原因
+  - 权益是明确的例外，从不直接更改层级
+- **端点**：
+  - POST /admin/users/:id/reconcile-tier：触发层级对账（仅管理员）
+  - GET /admin/users/:id/tier-state：获取当前层级状态和计算详情（仅管理员）
+  - POST /admin/users/:id/entitlements：授予权益（仅管理员）
+  - GET /admin/users/:id/entitlements：列出用户权益（仅管理员）
+  - DELETE /admin/entitlements/:id：撤销权益（仅管理员）
+  - **GET /admin/users/all-tier-data：获取所有用户数据和计划详情（仅管理员）**
+- **审计跟踪**：
+  - 所有层级对账都记录时间戳、来源和结果层级
+  - 所有权益授予/撤销都记录原因和管理员用户
+- **系统不变量**：
+  - 层级始终派生，从不手动分配
+  - 管理员触发计算，而非分配
+  - 权益是明确且可审计的
+  - 定价策略是层级确定的单一真实来源
+  - **层级对账数据仅限管理员，从不向普通用户公开**
 
-### 2.34 Funnel Analysis
-- **Function**: Track and analyze user conversion funnels
-- **Features**:
-  - Define custom conversion funnels with multiple steps
-  - Track funnel progression in real-time
-  - Calculate conversion rates between funnel steps
-  - Identify drop-off points in conversion process
-  - Visualize funnel performance with charts
-  - Compare funnel performance across time periods
-  - Segment funnel analysis by user attributes
-- **Funnel Steps**: VIEW → CLICK → CHECKOUT_STARTED → PAYMENT_SUCCEEDED → SALE
-- **Metrics**:
-  - Step completion rate
-  - Overall funnel conversion rate
-  - Average time between steps
-  - Drop-off rate at each step
-- **Endpoints**:
-  - POST /funnels: Create new funnel definition
-  - GET /funnels: List all funnels
-  - GET /funnels/:id: Get funnel details
-  - GET /funnels/:id/analytics: Get funnel analytics data
-  - PUT /funnels/:id: Update funnel definition
-  - DELETE /funnels/:id: Delete funnel
-
-## 3. Technical Stack
-
-### 3.1 Frontend
-- **Framework**: React 18+ with TypeScript
-- **UI Library**: shadcn/ui components + Tailwind CSS
-- **Charts**: Recharts for data visualization
-- **State Management**: React Context API + Hooks
-- **Routing**: React Router v6
-- **Animation**: Framer Motion for smooth transitions
-- **Form Handling**: React Hook Form with Zod validation
-
-### 3.2 Backend
-- **Runtime**: Supabase Edge Functions (Deno runtime)
-- **Database**: PostgreSQL (Supabase)
-- **Real-time**: Supabase Realtime subscriptions
-- **Authentication**: Supabase Auth
-- **Storage**: Supabase Storage for file uploads
-- **Caching**: In-memory cache + Redis (optional)
-
-### 3.3 DSP Implementation
-- **Language**: TypeScript/JavaScript
-- **Libraries**:
-  - Custom FIR filter implementation
-  - FFT.js for frequency domain analysis
-  - Custom HFD algorithm implementation
-  - Math.js for mathematical operations
-
-### 3.4 Payment Processing
-- **Provider**: Stripe
-- **Integration**: Stripe Checkout + Customer Portal
-- **Webhooks**: Stripe webhook events for subscription management
-
-### 3.5 Deployment
-- **Frontend Hosting**: Vercel or Netlify
-- **Backend**: Supabase Edge Functions
-- **Database**: Supabase PostgreSQL
-- **CDN**: Cloudflare or similar
-
-## 4. Data Model
-
-### 4.1 Core Tables
-
-#### sellers
-```sql
-CREATE TABLE sellers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  email TEXT UNIQUE,
-  api_key TEXT UNIQUE NOT NULL,
-  pricing_tier TEXT DEFAULT 'free',
-  stripe_customer_id TEXT,
-  stripe_subscription_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 2.37 管理员面板定价计划管理
+- **功能**：用户管理其订阅计划的管理员面板界面
+- **特性**：
+  - **定价计划显示**：显示所有可用定价层级（免费、基础、高级）及详细功能比较
+  - **当前计划指示器**：清楚指示用户当前活动的定价层级
+  - **升级/降级选项**：允许用户升级或降级其订阅计划
+  - **计划选择界面**：用于选择所需定价层级的交互式界面
+  - **订阅取消**：取消订阅按钮，允许用户取消其活动订阅
+  - **计划更改确认**：处理计划更改前的确认对话框
+  - **即时计划更改**：成功支付处理后计划更改立即生效\n- **用户界面组件**：
+  - 带功能列表和定价信息的定价层级卡\n  - 当前计划徽章或指示器
+  - 升级/降级操作按钮
+  - 取消订阅按钮（仅对活动付费订阅可见）
+  - 计划更改和取消的确认对话框
+- **业务逻辑**：\n  - 免费层级用户可以升级到基础或高级\n  - 基础层级用户可以升级到高级或降级到免费
+  - 高级层级用户可以降级到基础或免费
+  - 取消将用户在当前计费周期结束时返回到免费层级
+  - 成功升级后立即访问新层级功能
+  - 降级时优雅地移除功能访问
+- **端点**：
+  - GET /admin/pricing/plans：获取所有可用定价计划
+  - POST /admin/subscription/change：更改订阅计划（升级/降级）
+  - POST /admin/subscription/cancel：取消活动订阅\n  - GET /admin/subscription/current：获取当前订阅详情
+\n### 2.38 卖家页面数据管理
+- **功能**：在卖家页面上显示和管理卖家数据
+- **数据源**：仅显示来自数据库的真实卖家数据，无占位符或模拟数据
+- **特性**：
+  - 列出所有带真实数据的卖家\n  - 显示卖家指标和分析
+  - 筛选和搜索卖家
+  - 卖家详情视图
+- **数据要求**：
+  - 移除所有占位符商店和模拟数据
+  - 当不存在卖家时显示空状态
+  - 从数据库动态加载卖家数据
+  - 适当处理加载和错误状态
+- **空状态处理**：
+  - 当不存在卖家时显示信息性空状态消息
+  - 提供添加第一个卖家的行动号召
+  - 清晰的视觉指示，表明页面已准备就绪但不包含数据
+\n### 2.39 查询执行模型（Query Execution Model）
+- **功能**：引入显式查询计划抽象，将系统从 API 服务升级为分析引擎
+- **核心概念**：
+  - **QueryPlan**：确定性 DAG（有向无环图）结构
+    - SourceNode：环形缓冲区 / 聚合存储
+    - TransformNode：FIR、FFT、HFD 转换\n    - AggregateNode：聚合节点
+    - ScoreNode：评分节点
+    - OutputNode：输出节点
+- **执行模型**：
+  - 每个请求编译为确定性 DAG
+  - 通过受控执行引擎执行
+  - 支持多线程和调度执行
+- **优势**：
+  - 从 API 服务升级为分析引擎
+  - 直接对齐分布式查询和联邦引擎
+  - 无需完整 SQL，类型化分析计划 DSL 即可
+- **端点**：POST /query\n- **负载结构**：
+```json
+{
+  \"sellerId\": \"...\",
+  \"queryType\": \"ANOMALY\",
+  \"window\": {...},
+  \"operators\": [\"FIR\", \"FFT\", \"HFD\"],\n  \"output\": [\"score\", \"attribution\"],
+  \"constraints\": {
+    \"maxLatencyMs\": 50,
+    \"minConfidence\": 0.8\n  }
+}
 ```
 
-#### events
-```sql
-CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('SALE', 'CLICK', 'VIEW', 'CHECKOUT_STARTED', 'PAYMENT_SUCCEEDED')),
-  value NUMERIC DEFAULT 0,
-  metadata JSONB,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
+### 2.40 多线程调度执行
+- **功能**：显式多线程和调度执行，确保执行隔离\n- **核心组件**：
+  - **每卖家执行预算**：为每个卖家分配执行资源预算
+  - **按层级的有界工作池**：根据分析层级分配工作线程池
+  - **显式执行队列**：\n    - 异常队列\n    - 预测队列
+    - 洞察生成队列
+- **调度器结构**：
+  - 层级感知队列
+  - 背压信号
+  - 截止时间感知执行
+- **保证**：
+  - 公平性\n  - 延迟边界
+  - 可预测的降级
+- **映射**：直接映射到规模化的性能和可靠性
 
-CREATE INDEX idx_events_seller_timestamp ON events(seller_id, timestamp DESC);
-CREATE INDEX idx_events_type ON events(type);
+### 2.41 联邦查询架构
+- **功能**：支持跨系统的联邦查询，无需 Elasticsearch\n- **核心概念**：
+  - **可插拔数据源**：\n    - RingBufferSource：环形缓冲区数据源
+    - AggregatedSnapshotSource：聚合快照数据源
+    - HistoricalColdStoreSource：历史冷存储数据源
+    - ExternalWebhookSource：外部 Webhook 数据源
+- **执行模型**：
+  - 每个数据源的部分查询执行
+  - 在聚合层合并结果
+- **架构优势**：
+  - 即使所有数据源最初位于同一数据库，架构设计仍然重要
+  - 为未来扩展和分布式查询奠定基础
+\n### 2.42 成本优化查询
+- **功能**：轻量级成本优化查询规划\n- **现有基础**：
+  - 数据充分性指标
+  - 自适应采样
+- **升级**：
+  - **查询成本估算器**：\n    - 预期计算成本
+    - 预期置信度增益
+  - **选择策略**：
+    - 完整 FFT vs 减少 FFT
+    - 完整 HFD vs 代理指标
+- **优势**：经典查询规划，非 ML 炒作
+\n### 2.43 确定性并行保证
+- **功能**：确保跨线程的确定性并行执行
+- **现有优势**：强调可重现性\n- **升级**：\n  - **文档化和执行**：
+    - 跨线程的稳定执行顺序
+    - 确定性归约运算符
+    - 显式合并语义
+- **优势**：在分布式分析中罕见且令人印象深刻
+
+### 2.44 可执行系统不变量
+- **功能**：将系统不变量转化为可执行的运行时契约
+- **现有基础**：
+  - 编码化系统不变量
+  - 防护栏
+- **升级**：
+  - **不变量检查作为一等对象**：
+    - 不变量检查成为系统的核心组件
+    - 违规成为系统性异常
+- **桥接**：
+  - 算法、数据结构和系统优化
+  - 形式化推理
+\n### 2.45 管理员面板页面修改
+- **功能**：对管理员面板页面进行用户界面优化
+- **修改内容**：
+  - **免费层级卡当前计划按钮颜色**：
+    - 位置：管理员面板页面底部的免费层级卡
+    - 修改：将当前计划按钮的颜色更改为紫色/白色组合
+    - 要求：确保按钮颜色与应用程序的紫色主题色保持一致，提供良好的视觉对比度和可访问性
+  - **移除免费层级卡上的基础预测功能**：
+    - 位置：管理员面板页面的免费层级卡
+    - 修改：从免费层级卡的功能列表中移除基础预测（Basic predictions）项
+    - 要求：确保移除后功能列表布局保持整洁，其他功能项正常显示
+  - **当前层级显示文本修改**：
+    - 位置：管理员面板页面\n    - 修改：将当前层级（Current Tier）的显示文本更改为免费层级（Free Tier）\n    - 要求：确保文本更改在所有相关位置生效，保持语言一致性
+\n### 2.46 仪表板页面功能增强
+- **功能**：在仪表板页面上增强行为指纹识别和速率限制可见性
+- **增强内容**：
+  - **行为指纹识别能力实现**：
+    - 位置：仪表板页面\n    - 功能：实现行为指纹识别能力，显示卖家行为模式分析结果
+    - 要求：\n      - 在仪表板上添加行为指纹识别组件或面板
+      - 显示行为指纹签名和模式分类\n      - 展示机器人集群识别、重复操纵模式、突然策略变化等检测结果
+      - 使用 FFT + HFD + 时间熵组合进行分析
+      - 确保所有数据基于聚合行为信号，无 PII\n      - 提供清晰的视觉化展示和用户友好的界面
+  - **速率限制和背压可见性**：
+    - 位置：仪表板页面
+    - 功能：显示当前速率限制状态、剩余配额、背压指标和队列深度
+    - 要求：
+      - 添加速率限制和背压可见性面板或组件
+      - 显示当前速率限制状态（正常/接近限制/已达限制）
+      - 显示剩余配额（数值和百分比）
+      - 显示背压指标（队列深度、处理延迟等）
+      - 使用进度条、仪表盘或其他视觉化元素清晰展示
+      - 提供实时更新，确保数据准确性
+      - 当接近或达到限制时提供视觉警告或提示
+
+## 3. 技术架构
+
+### 3.1 数据处理\n- 用于实时数据存储的预分配固定大小连续环形缓冲区
+- 使用索引模窗口大小进行循环访问\n- 零每事件重新分配，无每事件对象流失
+- 流式分析处理\n- DSP 算法集成（FIR、FFT、HFD）
+- 高吞吐量场景的批处理支持
+- 具有固定随机种子和一致排序的确定性计算管道
+- **聚合优先**：所有分析都在聚合数据上操作，从不在原始单个事件上操作
+
+### 3.2 具有时间局部性的缓存策略
+- 概率缓存机制\n- **lastComputedAt** 时间戳跟踪
+- 仅在查询时进行概率刷新
+- 动态 TTL 调整（在集中配置中定义）
+- 热/冷数据区分
+- 用于频繁访问计算的短期缓存层
+\n### 3.3 API 设计
+- RESTful API 架构
+- 实时事件摄取
+- 批量摄取端点
+- 按需指标查询
+- 类型安全实现（无 any 转换）
+- 用于异常和预测结果的专用销售端点
+- 决策钩子集成点
+- 一键导出端点
+- 可审计配置端点
+- 系统健康端点
+- 用户身份验证端点
+- 团队管理端点
+- 项目管理端点
+- 任务管理端点
+- 计费和支付端点
+- Webhook 管理端点
+- 漏斗分析端点
+- 管理员层级对账端点
+- 管理员定价计划管理端点
+- **仅管理员端点用于查看所有用户层级数据**
+- **查询执行端点**：POST /query 用于 API 驱动的查询请求
+\n### 3.4 仪表板组件
+- 模式切换功能（浅色/深色主题）
+- 带适当时间戳处理的时间序列图表：
+  - 内部数字时间戳
+  - 工具提示和轴刻度中的格式化显示
+  - 历史和预测数据之间的清晰视觉分离
+  - 多日数据跨度的非重叠标签
+- 置信区间可视化（预测周围的 ± 区间）
+- 实时警报通知
+- 带分页/无限滚动的事件日志
+- **时间窗口显示面板**：显示当前分析的开始时间、结束时间、窗口大小\n- **数据充分性指标**：显示数据完整性的视觉指示器（进度条、状态徽章）
+- **速率限制和背压仪表板**：显示当前速率限制状态、剩余配额、背压指标、队列深度可视化
+- **置信度和充分性感知消息**：解释结果可靠性的上下文消息
+- **可嵌入组件支持**：可嵌入小部件的集成\n- **洞察生命周期可视化**：显示洞察状态及视觉指示器和状态转换历史
+- **配置版本显示**：显示正在使用的当前配置版本
+- **信号质量指标**：显示边缘案例标志和降级模式警告
+- **系统健康面板**：用于系统性异常监控的单独面板
+- **任务完成进度小部件**：显示当前用户的总体任务完成百分比
+- **已分配任务小部件**：显示分配给当前用户的任务列表及状态指示器和快速更新功能
+- **主区域导航**：导航样式位于主区域（无传统侧边栏）
+- **管理员层级对账面板**：显示层级状态、使用指标、对账控制（仅管理员，显示所有用户数据）
+- **管理员定价计划管理面板**：显示定价计划、当前计划、升级/降级选项、取消订阅按钮（管理员面板）
+- **懒加载**：所有仪表板组件实现懒加载以提高性能
+- **行为指纹识别能力**：在仪表板上实现行为指纹识别功能，显示卖家行为模式分析结果
+\n### 3.5 实时集成
+- Supabase Realtime 用于实时数据流\n- 用于仪表板更新的 WebSocket 连接
+- AnomalyAlert 组件集成
+- 实时任务更新和同步
+- 实时团队协作功能
+\n### 3.6 报告和定价系统
+- 自动化每周报告生成引擎
+- 警报驱动的定价层级计算逻辑（数据驱动，非基于逻辑）
+- 报告交付系统（电子邮件、通知、API）
+- 定价层级 API 端点
+- 一键导出功能集成
+- 每个报告的配置快照存储
+- **层级对账系统**：基于使用情况和策略的管理员触发层级重新计算
+- **定价计划管理**：用于计划升级、降级和取消的面向用户的界面
+\n### 3.7 确定性可重现性系统
+- 固定随机种子管理
+- 确定性排序和计算顺序
+- 用于验证的可重现性哈希生成
+- 用于审计跟踪的输入/输出日志记录
+- **系统不变量**：确定性保证 - 相同输入始终产生相同输出
+\n### 3.8 集中配置系统
+- **集中配置存储**：所有系统参数的单一真实来源
+- **配置参数**：
+  - 窗口大小（环形缓冲区大小、分析窗口大小）\n  - 阈值（异常分数阈值、置信度截止值、信号质量阈值）\n  - TTL（热门卖家 TTL、冷门卖家 TTL、缓存 TTL）
+  - 层级限制（每层级的警报频率限制、每层级的功能访问）
+  - 置信度截止值（预测的最小置信度、最小数据充分性）
+  - 警报级别（由配置表定义，而非条件语句）
+  - 采样率（高/中/低活动采样率）
+  - 每层级的嵌入速率限制
+  - 每层级的保留策略
+  - 边缘案例检测阈值
+  - 漏斗模板定义
+  - Webhook 重试策略
+  - 用于层级确定的定价策略规则
+- **动态表达式**：在适用的地方使用动态表达式，避免魔术数字
+- **数据驱动设计**：警报级别、层级、阈值都由配置数据定义，而非硬编码逻辑
+- **版本控制**：所有配置更改都带时间戳进行版本控制
+- **审计跟踪**：配置更改的完整审计日志\n
+### 3.9 模块化和可组合架构
+- **可组合性焦点**：为可组合性而非重用而设计
+- **模块化组件**：DSP、缓存、警报、报告、导出、嵌入、配置管理、洞察生命周期、边缘案例检测、系统性异常检测、身份验证、团队管理、项目管理、任务管理、计费、webhook 管理、漏斗分析、层级对账、定价计划管理、查询执行模型、多线程调度、联邦查询的单独模块
+- **清洁重构**：消除冗余，集中通用逻辑
+- **零魔术数字**：所有常量在集中配置中定义
+\n### 3.10 数据最小化和隐私架构
+- **硬不变量**：分析路径中无姓名、电子邮件、地址\n- **卖家 ID**：始终是不透明/代理密钥，从不是直接标识符
+- **事件负载**：仅剥离到行为信号，无 PII
+- **聚合优先**：所有分析都在聚合数据上操作\n- **数据最小化执行**：自动检查以防止 PII 泄漏
+\n### 3.11 保留策略系统
+- **基于层级的保留**：在集中配置中按定价层级定义的保留期
+- **明确到期窗口**：所有数据的明确到期时间戳
+- **自动衰减**：基于保留策略的自动数据删除
+- **保留层级**：\n  - 免费层级：30 天保留
+  - 基础层级：60 天保留
+  - 高级层级：90 天保留
+- **策略执行**：保留作为策略，而非配置 - 在系统级别执行
+\n### 3.12 系统不变量（编码化）
+- **确定性保证**：相同输入始终产生相同输出
+- **无静默重新计算**：所有重新计算都被记录和审计
+- **无隐藏阈值**：所有阈值在集中配置中定义\n- **所有警报引用数据充分性**：每个警报必须包含数据充分性状态
+- **数据最小化**：分析路径中无 PII，卖家 ID 始终不透明，事件负载仅剥离到行为信号
+- **聚合优先**：所有分析都在聚合数据上操作，从不在原始单个事件上操作
+- **边缘案例作为信号**：边缘案例被视为低置信度信号机制，而非错误
+- **系统性异常分离**：系统健康问题与卖家分析分开标记
+- **Webhook 作为副作用**：Webhook 是洞察状态变化的副作用，从不作为输入
+- **漏斗确定性**：漏斗分析必须是确定性和可重现的
+- **层级作为派生状态**：层级始终从使用情况和策略派生，从不手动分配
+- **仅管理员层级数据访问**：层级对账数据和所有用户计划详情仅对管理员用户可访问
+\n### 3.13 加密策略
+- **静态加密**：\n  - 事件存储：加密\n  - 配置表：加密
+  - 报告：加密
+  - 使用日志：加密
+  - 用户凭据：加密
+  - 团队数据：加密
+  - 项目数据：加密
+  - 任务数据：加密
+  - Webhook 配置：加密
+  - 层级状态和权益：加密
+- **传输中加密**：
+  - API 流量：TLS 无处不在，无例外
+  - 小部件嵌入：需要 TLS\n  - Webhook：需要 TLS
+  - 实时连接：需要 TLS\n- **秘密和密钥管理**：\n  - API 密钥：加密、可轮换、有范围、可撤销
+  - Webhook 秘密：加密、可轮换、有范围、可撤销
+  - 嵌入令牌：加密、可轮换、有范围、可撤销
+  - Stripe API 密钥：加密、可轮换\n- **未加密**：
+  - 派生分析：未加密（聚合、非敏感）
+  - 聚合指标：未加密（聚合、非敏感）\n  - 分数：未加密（聚合、非敏感）
+- **密钥轮换**：在集中配置中定义的自动密钥轮换策略
+- **访问控制**：加密数据的基于角色的访问控制
+
+### 3.14 前端架构
+- **技术栈**：React + Tailwind CSS + Shadcn\n- **组件结构**：模块化、可重用组件
+- **响应式设计**：移动优先方法，带桌面断点
+- **对话框组件**：用于行动号召交互的 HTML 对话框元素
+  - **对话框关闭行为**：可通过点击取消按钮或点击对话框外部关闭对话框
+- **导航设计**：导航样式位于主区域（无传统侧边栏）
+- **样式一致性**：维护现有应用程序设计系统和样式模式
+- **可访问性**：符合 WCAG，支持键盘导航\n- **性能**：优化加载，图像和组件的懒加载
+- **设计灵感**：现代、简洁的美学，灵感来自类似于 nfinitepaper.com 的设计模式
+- **懒加载实现**：对所有页面和主要组件应用懒加载
+- **页面过渡**：使用 motion 库实现流畅的页面过渡和微妙动画
+- **动画库**：使用 motion 库（Framer Motion）进行页面过渡和组件动画
+- **动画特性**：
+  - 微妙流畅的过渡\n  - 增强用户体验的非侵入性动画
+  - 所有页面上一致的动画时间和缓动
+  - 页面过渡的淡入和滑入效果
+  - 优化的动画性能以避免卡顿
+\n### 3.15 身份验证和授权架构
+- **身份验证方法**：基于 JWT 令牌的身份验证\n- **会话管理**：带令牌刷新的安全会话处理
+- **基于角色的访问控制（RBAC）**：
+  - 管理员角色：完整权限，包括层级对账、定价计划管理、管理员面板访问以及查看所有用户层级数据
+  - 成员角色：有限权限\n- **权限执行**：所有受保护端点的服务器端权限检查
+- **令牌安全**：用于令牌存储的 HTTP-only cookie，CSRF 保护
+- **注册后流程**：\n  - 免费层级用户：成功注册后重定向到仪表板页面
+  - 付费层级用户：成功注册后重定向到 Stripe 结账，完成支付后重定向到仪表板页面
+- **管理员面板访问控制**：适当的角色验证，确保管理员用户可以无错误访问管理员面板
+- **密码重置流程**：
+  - 用户点击登录对话框上的忘记密码？重置密码链接\n  - 用户被重定向到密码重置页面或对话框
+  - 用户输入电子邮件地址\n  - 系统发送带安全令牌的密码重置电子邮件
+  - 用户点击电子邮件中的链接并设置新密码
+  - 用户被重定向到登录页面
+\n### 3.16 团队协作架构
+- **多租户**：基于团队的数据隔离
+- **实时协作**：Supabase Realtime 用于实时团队更新
+- **访问控制**：团队级和项目级访问控制
+- **邀请系统**：带安全令牌的基于电子邮件的成员邀请
+- **数据可见性控制**：管理员用户可以查看所有用户数据和计划详情；普通用户不能\n\n### 3.17 支付处理架构
+- **支付网关**：Stripe 集成\n- **订阅管理**：Stripe Subscriptions API
+- **Webhook 处理**：带签名验证的安全 webhook 处理
+- **层级访问控制**：基于订阅层级的自动功能访问\n- **支付安全**：符合 PCI DSS 的支付处理（由 Stripe 处理）
+- **支付通知**：显示成功/失败通知，5 秒后自动消失
+- **配置验证**：在处理支付前验证 Stripe API 密钥
+- **错误处理**：当支付系统未配置时显示清晰的错误消息
+- **计划更改处理**：通过 Stripe API 处理订阅升级、降级和取消
+- **着陆页支付流程集成**：\n  - 免费层级开始按钮重定向到注册对话框，然后到仪表板
+  - 付费层级订阅按钮重定向到注册对话框，然后到 Stripe 结账，支付完成后到仪表板
+\n### 3.18 Webhook 架构
+- **异步交付**：Webhook 交付是异步的，不阻塞主分析流程
+- **重试机制**：带指数退避的重试策略
+- **死信队列**：持续失败的 webhook 进入死信队列供手动审查
+- **交付日志记录**：完整的 webhook 交付历史和状态跟踪
+- **签名验证**：所有 webhook 负载都使用 HMAC 签名验证
+- **速率限制**：每个 webhook 端点的速率限制以防止滥用
+\n### 3.19 漏斗分析架构\n- **声明式定义**：漏斗在集中配置中声明式定义
+- **模板系统**：每层级的预定义漏斗模板
+- **步骤约束**：步骤必须在时间上单调，窗口必须对齐
+- **充分性检查**：每步的数据充分性验证
+- **流失归因**：每步的详细流失原因分析\n- **确定性计算**：漏斗分析必须是确定性和可重现的
+\n### 3.20 层级对账架构
+- **派生状态模型**：层级始终从使用指标和定价策略计算\n- **计算触发器**：\n  - 计划作业（定期自动对账）
+  - 管理员触发对账（按需）
+- **使用指标收集**：
+  - Webhook 交付\n  - API 调用
+  - 警报频率
+  - 预测请求
+  - 存储使用\n- **定价策略引擎**：
+  - 加载当前定价配置
+  - 应用宽限规则
+  - 计算有效层级
+- **状态持久化**：
+  - effectiveTier\n  - pricingVersion
+  - computedAt
+  - source（scheduled 或 admin_reconcile）
+- **权益系统**：
+  - 与层级计算分离
+  - 带到期和原因的明确例外
+  - 管理员授予且可审计\n- **审计跟踪**：所有层级更改和对账的完整日志记录
+- **访问控制**：层级对账数据和所有用户计划详情仅对管理员用户可访问
+
+### 3.21 性能优化架构
+- **懒加载策略**：
+  - 所有主要页面和组件的代码拆分
+  - 基于路由的代码拆分的动态导入
+  - 图像和媒体资产的懒加载
+  - 非关键组件的延迟加载
+- **页面过渡系统**：
+  - Motion 库（Framer Motion）集成以实现流畅过渡
+  - 所有页面上一致的动画时间\n  - 页面过渡的淡入和滑入效果
+  - 优化的动画性能以防止布局偏移
+- **动画性能**：
+  - 使用 transform 和 opacity 的 GPU 加速动画
+  - RequestAnimationFrame 用于流畅的 60fps 动画
+  - 避免动画触发布局的属性\n  - 预加载关键动画资产
+- **加载状态**：
+  - 懒加载内容的骨架屏幕
+  - 渐进式加载指示器
+  - 加载和已加载状态之间的流畅过渡
+\n### 3.22 卖家页面架构
+- **数据加载**：从数据库动态数据加载，无静态或占位符数据
+- **空状态处理**：当不存在卖家时优雅的空状态显示
+- **实时更新**：使用 Supabase Realtime 进行实时卖家数据更新
+- **性能**：针对大型卖家数据集的优化查询和分页
+- **错误处理**：数据加载失败的全面错误处理
+\n### 3.23 查询执行架构
+- **查询计划抽象**：显式 QueryPlan 结构，包含 SourceNode、TransformNode、AggregateNode、ScoreNode、OutputNode
+- **确定性 DAG 编译**：每个请求编译为确定性有向无环图
+- **受控执行引擎**：通过受控执行引擎执行查询计划
+- **多线程支持**：支持多线程并行执行\n- **调度系统**：层级感知队列、背压信号、截止时间感知执行
+\n### 3.24 数据库架构增强
+- **查询执行表**：
+  - 表名：query_execution\n  - 字段：id、seller_id、query_type、operator_chain、input_window、status、result_reference、started_at、completed_at、error\n  - 用途：跟踪分析计算 DAG，支持分布式查询
+- **事件聚合表**：
+  - 表名：events_agg_daily
+  - 字段：seller_id、metric_type、day、total_value、count、anomaly_score_avg\n  - 用途：减少大型卖家的计算开销，支持时间窗口查询
+- **缓存指标表**：
+  - 表名：cached_metrics
+  - 字段：id、seller_id、metric_type、cached_value、last_computed、ttl_seconds、version
+  - 用途：数据库级别的概率缓存，支持跨服务共享缓存
+- **环形缓冲区历史表**：
+  - 表名：ring_buffer_history
+  - 字段：id、seller_id、metric_type、timestamp、value、created_at\n  - 用途：调试、可重现性、跨服务分析
+- **管道版本表**：
+  - 表名：pipeline_versions\n  - 字段：id、version、description、operators、effective_at、created_by、created_at
+  - 用途：管道版本控制，支持可重现性和可审计性
+- **摄取批次表**：
+  - 表名：ingestion_batches
+  - 字段：id、batch_uuid、seller_id、event_count、ingested_at、status
+  - 用途：避免多节点摄取时的事件重复处理
+\n## 4. 系统特性
+- 轻量级和优雅的设计
+- 高性能和可扩展性
+- 实时处理能力
+- 具有时间局部性的智能缓存优化
+- 自适应资源管理
+- 全面的分析和洞察\n- 类型安全实现
+- 带实时更新的增强用户体验
+- 确定性和可重现的异常检测
+- 明确的时间窗口定义和数据充分性指标
+- 速率限制和背压可见性
+- 用于自定义业务逻辑的可扩展决策钩子
+- 带洞察摘要的自动化每周健康报告
+- 带固定默认值的动态警报驱动定价层级
+- 用于销售异常和预测结果的专用端点
+- 一键导出功能（PDF/电子邮件）
+- 用于外部集成的可嵌入组件，带软防护栏
+- 全面的置信度和充分性感知消息
+- 数据驱动的配置系统（无魔术数字，无硬编码逻辑）
+- 模块化和可组合架构
+- 带预分配环形缓冲区和零每事件流失的高效数据移动
+- 带上下文信息的警报的单一主要触发器
+- 带版本控制和快照的可审计配置管理
+- 带状态管理的形式化洞察生命周期
+- 数据最小化和隐私作为硬不变量
+- 聚合优先分析方法
+- 带自动衰减的基于层级的保留策略
+- 用于一致性和可靠性的编码化系统不变量
+- 边缘案例检测作为信号质量指标
+- 与卖家分析分离的系统性异常检测
+- 全面的加密策略（静态、传输中、秘密和密钥）
+- 带简洁设计和直观用户体验的现代响应式前端
+- 安全的用户身份验证和授权
+- 带管理员/成员角色的基于角色的团队协作
+- 实时任务管理和同步
+- 带完成进度和已分配任务概览的仪表板任务分析
+- 集成的 Stripe 支付处理，带配置验证和错误处理
+- Webhook 注册和管理作为洞察状态变化的副作用
+- 声明式、确定性、可重现的漏斗分析
+- 主区域的导航设计（无传统侧边栏）
+- 着陆页设计灵感来自类似于 nfinitepaper.com 的现代美学
+- Webhook 量直接映射到定价层级以实现透明货币化
+- 带派生状态模型和权益的管理员层级对账系统
+- 带升级/降级/取消能力的面向用户的定价计划管理
+- 带真实数据的干净卖家页面，无占位符内容
+- 所有页面和组件的懒加载实现
+- 使用 motion 库的流畅页面过渡和微妙动画
+- 优化的动画性能以实现 60fps 用户体验
+- 无缝的着陆页到注册到支付流程集成
+- 适当的管理员面板访问控制，管理员用户无错误消息
+- **仅管理员访问层级对账数据和所有用户计划详情**
+- **登录对话框上的密码重置功能及链接**
+- **查询执行模型**：显式查询计划抽象，将系统从 API 服务升级为分析引擎
+- **多线程调度执行**：显式多线程和调度执行，确保执行隔离和可预测性能
+- **联邦查询架构**：支持跨系统的联邦查询，可插拔数据源\n- **成本优化查询**：轻量级成本优化查询规划，经典查询规划方法
+- **确定性并行保证**：跨线程的确定性并行执行，稳定执行顺序
+- **可执行系统不变量**：将系统不变量转化为可执行的运行时契约
+- **管理员面板页面优化**：免费层级卡按钮颜色调整、功能列表优化、文本修改
+- **仪表板功能增强**：行为指纹识别能力实现、速率限制和背压可见性
+- **数据库架构增强**：查询执行表、事件聚合表、缓存指标表、环形缓冲区历史表、管道版本表、摄取批次表
+\n## 5. 系统章程
+\n### 5.1 目的和范围
+本系统章程定义了管理 Lush Analytics 平台的基本原则、不变量和治理规则。它作为所有系统设计、实施和运营决策的权威参考。所有系统组件、模块和行为必须符合此处阐述的原则和不变量。
+
+### 5.2 核心原则
+\n#### 5.2.1 确定性和可重现性
+系统保证确定性行为：相同输入必须始终产生相同输出。此原则确保可审计性、可调试性和信任。所有计算使用固定随机种子、确定性排序和一致排序。为所有分析输出生成可重现性哈希以启用验证。
+
+#### 5.2.2 数据最小化和隐私设计
+系统将严格的数据最小化作为硬不变量执行。任何个人身份信息（PII），如姓名、电子邮件或地址，都不得进入分析路径。卖家标识符始终是不透明的代理密钥。事件负载被剥离到仅行为信号。所有分析都在聚合数据上操作，从不在原始单个事件上操作。此原则是不可协商的，并在架构级别执行。
+
+#### 5.2.3 透明度和可解释性
+系统为其决策过程提供完全透明度。所有分析输出包括明确的时间窗口定义、数据充分性指标、置信度消息、信号质量评估和配置版本引用。用户必须了解系统知道什么、不知道什么以及对其输出的置信度。
+
+#### 5.2.4 配置作为单一真实来源
+所有系统参数、阈值和行为都在集中配置系统中定义。不允许魔术数字或硬编码逻辑。配置更改被版本控制、带时间戳并可审计。此原则确保一致性、可维护性和治理。
+
+#### 5.2.5 可组合性优于可重用性
+系统在其架构中优先考虑可组合性。模块被设计为可组合和扩展，而不仅仅是可重用。此原则实现灵活性、适应性和长期可维护性。
+
+#### 5.2.6 边缘案例作为信号，而非错误
+系统将边缘案例（恒定零值、完美周期性、不可能的规律性）视为低置信度信号机制，而非错误或错误。边缘案例作为信号质量指标呈现，提供有关数据质量和行为模式的有价值信息。
+\n#### 5.2.7 关注点分离：卖家分析与系统健康
+卖家分析和系统性异常严格分离。系统健康问题（模式变化、时间戳漂移、摄取突发）被独立标记，不污染卖家级分析。这种分离确保清晰度并防止面向卖家的输出中的误报。
+
+#### 5.2.8 Webhook 作为副作用
+Webhook 是洞察状态变化的副作用，从不作为输入。Webhook 仅观察计算的事实，从不触发重新计算。此原则维护确定性和可审计性。
+
+#### 5.2.9 漏斗确定性
+漏斗分析必须是确定性和可重现的。漏斗在集中配置中声明式定义，步骤必须在时间上单调，窗口必须对齐。此原则确保漏斗分析的可靠性和可审计性。
+
+#### 5.2.10 层级作为派生状态
+定价层级是派生状态，而非手动属性。层级始终从使用指标、定价策略和宽限规则计算。管理员触发计算，而非分配。此原则确保定价诚实、明确例外和清洁审计。
+
+#### 5.2.11 仅管理员访问敏感数据
+层级对账数据和所有用户计划详情仅对管理员用户可访问。普通用户无法查看或访问此信息。此原则确保数据隐私和适当的访问控制。\n
+#### 5.2.12 查询执行模型优先\n系统采用显式查询计划抽象，将系统从 API 服务升级为分析引擎。查询计划编译为确定性 DAG，通过受控执行引擎执行。此原则实现分布式查询、联邦查询和高级查询优化。
+
+### 5.3 系统不变量
+
+以下不变量在系统级别编码和执行。违反这些不变量构成系统故障，必须通过设计防止：
+
+1. **确定性保证**：相同输入始终产生相同输出。
+2. **无静默重新计算**：所有重新计算都被记录和审计。
+3. **无隐藏阈值**：所有阈值在集中配置中定义。
+4. **所有警报引用数据充分性**：每个警报必须包含数据充分性状态。
+5. **数据最小化**：分析路径中无 PII；卖家 ID 始终不透明；事件负载仅剥离到行为信号。
+6. **聚合优先**：所有分析都在聚合数据上操作，从不在原始单个事件上操作。
+7. **边缘案例作为信号**：边缘案例被视为低置信度信号机制，而非错误。
+8. **系统性异常分离**：系统健康问题与卖家分析分开标记。
+9. **Webhook 作为副作用**：Webhook 是洞察状态变化的副作用，从不作为输入。
+10. **漏斗确定性**：漏斗分析必须是确定性和可重现的。
+11. **层级作为派生状态**：层级始终从使用情况和策略派生，从不手动分配。
+12. **仅管理员层级数据访问**：层级对账数据和所有用户计划详情仅对管理员用户可访问。
+13. **查询计划确定性**：所有查询计划必须编译为确定性 DAG。
+14. **执行隔离**：多线程执行必须保证确定性和隔离性。
+\n### 5.4 治理和变更管理
+
+对系统章程的所有更改都需要正式审查和批准。配置更改被版本控制并可审计。系统不变量在任何情况下都不得被违反。此治理框架确保稳定性、信任和长期系统完整性。
+
+## 6. 公共信任和安全声明
+
+### 6.1 我们对信任和安全的承诺
+
+Lush Analytics 建立在信任、透明度和安全的基础上。我们认识到我们的用户委托我们处理敏感的行为数据，我们认真对待这一责任。本公共信任和安全声明阐述了我们的承诺以及我们为保护用户数据和维护系统完整性而实施的措施。
+
+### 6.2 数据隐私和最小化\n
+我们将严格的数据最小化作为核心架构原则执行。分析路径中不收集、存储或处理任何个人身份信息（PII），如姓名、电子邮件或地址。卖家标识符始终是不透明的代理密钥，确保匿名性。事件负载被剥离到仅行为信号，所有分析都在聚合数据上操作。这种方法最小化隐私风险并确保符合数据保护法规。
+
+### 6.3 加密和数据保护
+
+我们采用全面的加密策略来保护静态和传输中的数据：
+
+- **静态**：事件存储、配置表、报告、使用日志、用户凭据、团队数据、项目数据、任务数据、webhook 配置和层级状态使用行业标准加密算法加密。
+- **传输中**：所有 API 流量、小部件嵌入、webhook 和实时连接都使用 TLS 加密，无例外。
+- **秘密和密钥**：API 密钥、webhook 秘密、嵌入令牌和 Stripe API 密钥被加密、可轮换、有范围并可撤销。执行自动密钥轮换策略。
+\n派生分析、聚合指标和分数按设计不加密，因为它们是聚合的且非敏感的。
+
+### 6.4 确定性和可审计性
+
+我们保证确定性行为：相同输入始终产生相同输出。这确保可审计性、可调试性和信任。所有计算都被记录，并生成可重现性哈希以进行验证。配置更改被版本控制并可审计，提供完整的审计跟踪。
+
+### 6.5 透明度和可解释性\n
+我们为我们的决策过程提供完全透明度。所有分析输出包括明确的时间窗口定义、数据充分性指标、置信度消息、信号质量评估和配置版本引用。用户始终知道系统知道什么、不知道什么以及对其输出的置信度。
+
+### 6.6 保留和数据生命周期
+
+我们执行带明确到期窗口的基于层级的保留策略。数据根据保留策略自动删除，确保符合数据保护法规并最小化长期存储风险。保留期被清楚地传达并在系统级别执行。
+
+### 6.7 安全事件响应
+
+我们维护正式的安全事件响应计划。在发生安全事件时，我们将及时调查、缓解并与受影响的用户沟通。我们致力于持续改进并从安全事件中学习。\n
+### 6.8 合规性和认证
+
+我们致力于遵守相关的数据保护法规，包括 GDPR 和 CCPA。我们持续监控法规发展并相应调整我们的做法。\n
+### 6.9 联系和问责
+
+对于安全问题、疑问或事件报告，用户可以通过 security@lushanalytics.com 联系我们的安全团队。我们对用户负责，并致力于维护他们的信任。
+
+## 7. 信号语义词汇表
+
+本词汇表定义了整个系统中使用的关键术语的精确含义。这些定义是权威的，必须在所有系统组件、文档和面向用户的界面中一致应用。
+
+### 7.1 异常\n
+**定义**：异常是与预期行为模式的统计显著偏差，量化为 [0, 1] 范围内的概率分数。异常分数为 0 表示无偏差；分数为 1 表示最大偏差。
+\n**组成**：异常分数使用以下的贝叶斯/概率组合计算：
+- **FFT 峰值贡献**：通过快速傅里叶变换分析检测到的周期性峰值。
+- **HFD 复杂性贡献**：通过 Higuchi 分形维数测量的时间序列复杂性。
+- **趋势偏差贡献**：与平滑趋势线的偏差。
+- **平滑偏差贡献**：与 FIR 平滑基线的偏差。
+\n**解释**：异常代表潜在问题，如机器人活动、销售峰值或异常行为模式。它们是调查的信号，而非明确的诊断。
+
+**归因**：所有异常输出包括根本原因分解，显示每个组件对总体异常分数的百分比贡献。
+
+### 7.2 置信度
+
+**定义**：置信度是系统对其输出的确定性的度量，表示为定性或定量指标。置信度取决于数据充分性、信号质量和计算稳定性。
+
+**影响置信度的因素**：
+- **数据充分性**：可靠分析需要足够的数据点。数据不足会降低置信度。
+- **信号质量**：高信号质量（低噪声、无降级模式）增加置信度。低信号质量（边缘案例、降级模式）降低置信度。
+- **计算稳定性**：确定性、可重现的计算增加置信度。非确定性或不稳定的计算降低置信度。
+
+**置信度消息**：所有分析输出包括置信度感知消息，根据数据质量和充分性解释结果可靠性。
+
+**置信区间**：预测包括预测值周围的置信区间（± 区间），可视化不确定性。
+
+### 7.3 充分性
+
+**定义**：充分性是一个二元或分级指标，指示系统是否有足够的数据来产生可靠的分析。充分性通过将可用数据点数量与给定分析所需的最小数据点进行比较来确定。\n
+**充分性指标**：
+- **充分**：系统有足够的数据来产生可靠的分析。
+- **不充分**：系统没有足够的数据。分析可能不可靠或不可用。
+\n**充分性阈值**：最小数据点要求在集中配置中定义，并因分析类型（异常检测、预测、健康评分等）而异。
+
+**充分性消息**：所有分析输出包括数据充分性指标和消息，解释是否有足够的数据以及需要多少数据点与可用数据点。
+
+**系统不变量**：所有警报必须引用数据充分性状态。基于不充分数据的警报必须明确标记。
+
+### 7.4 信号质量
+
+**定义**：信号质量是对输入数据的可靠性和可解释性的评估。高信号质量表示干净、一致和可解释的数据。低信号质量表示嘈杂、不一致或降级的数据模式。
+
+**信号质量指标**：\n- **降级模式**：恒定零值、完美周期性、不可能的规律性。这些模式被标记为低置信度信号机制。
+- **边缘案例标志**：异常或边界案例数据模式的指示器。
+- **噪声水平**：数据噪声和可变性的评估。
+
+**处理**：信号质量指标在所有分析输出中呈现。低信号质量降低置信度，并通过置信度感知消息传达给用户。
+
+**哲学**：边缘案例和降级模式被视为信号，而非错误。它们提供有关数据质量和行为模式的有价值信息。
+
+### 7.5 时间窗口
+
+**定义**：时间窗口是计算分析的时间范围。时间窗口由起始时间戳、结束时间戳和窗口大小（持续时间）定义。
+
+**清晰度要求**：所有分析输出必须包括明确的时间窗口定义，确保用户了解分析的时间范围。
+\n**环形缓冲区对齐**：时间窗口与环形缓冲区结构对齐，确保高效和一致的数据访问。
+
+### 7.6 可重现性哈希
+
+**定义**：可重现性哈希是从用于产生分析输出的输入和配置生成的加密哈希值。它启用确定性验证：相同的输入和配置将始终产生相同的哈希。
+
+**目的**：可重现性哈希确保可审计性和信任。用户可以验证分析输出是确定性的且未被篡改。
+\n**包含**：所有分析输出包括可重现性哈希。
+
+### 7.7 配置版本
+
+**定义**：配置版本是集中配置系统特定版本的唯一标识符。配置版本带时间戳并可审计。
+
+**目的**：配置版本确保分析输出可以追溯到用于产生它们的确切配置。这启用可重现性、可审计性和调试。
+
+**包含**：所有分析输出包括用于计算的配置版本。
+\n### 7.8 洞察生命周期状态
+
+**定义**：洞察生命周期状态是自动生成的洞察的当前状态。洞察根据时间、数据更新和用户反馈在状态之间转换。
+
+**状态**：
+- **Generated**：新创建的洞察。
+- **Confirmed**：由后续数据或用户操作验证的洞察。
+- **Expired**：由于时间流逝而不再相关的洞察。
+- **Superseded**：被更新、更准确的洞察取代的洞察。
+
+**目的**：洞察生命周期状态提供上下文和相关性，帮助用户了解洞察的当前有效性和适用性。
+
+### 7.9 系统性异常\n
+**定义**：系统性异常是影响系统本身的问题，而非卖家级行为。系统性异常包括模式变化、时间戳漂移和摄取突发。
+
+**分离**：系统性异常与卖家分析分开标记，确保清晰度并防止面向卖家的输出中的误报。
+
+**监控**：系统性异常通过专用系统健康端点和仪表板面板进行监控。
+\n### 7.10 Webhook\n
+**定义**：Webhook 是洞察状态变化的副作用，从不作为输入。Webhook 仅观察计算的事实，从不触发重新计算。
+
+**事件类型**：
+- anomaly_detected：检测到异常\n- alert_triggered：触发警报
+- prediction_updated：更新预测\n- insight_state_changed：洞察状态变化
+- weekly_report_ready：每周报告准备就绪
+- pricing_tier_changed：定价层级变化
+
+**负载要求**：所有 webhook 负载必须包括 reproducibilityHash、configVersion、timeWindow、dataSufficiency 和 signalQuality。
+
+**交付保证**：Webhook 交付是异步的且尽力而为。交付失败从不影响分析计算。
+
+### 7.11 漏斗\n
+**定义**：漏斗是用于分析用户在一系列步骤中的转化和流失的事件类型聚合。漏斗必须是确定性、可重现和可解释的。
+
+**步骤约束**：
+- 步骤必须在时间上单调（按时间顺序）
+- 漏斗窗口必须与环形缓冲区窗口对齐
+\n**输出要求**：漏斗输出始终包括流失归因、每步充分性和置信度消息。
+\n**模板**：每层级的预定义漏斗模板，卖家可选但受约束的步骤集。
+
+### 7.12 层级\n
+**定义**：层级是代表用户当前定价级别的派生状态，从使用指标、定价策略和宽限规则计算。层级从不手动分配。
+
+**计算模型**：
+```\n使用指标\n+ 定价策略
++ 宽限规则
+----------------
+= 有效层级
 ```
 
-#### anomalies
-```sql
-CREATE TABLE anomalies (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  anomaly_score NUMERIC NOT NULL CHECK (anomaly_score >= 0 AND anomaly_score <= 1),
-  confidence NUMERIC NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
-  attribution JSONB,
-  time_window JSONB,
-  data_sufficiency TEXT,
-  reproducibility_hash TEXT,
-  config_version TEXT,
-  signal_quality JSONB,
-  detected_at TIMESTAMPTZ DEFAULT NOW()
-);
+**层级值**：free、basic、premium、business\n
+**计算触发器**：
+- 计划作业（定期自动对账）
+- 管理员触发对账（按需）
+\n**状态持久化**：effectiveTier、pricingVersion、computedAt、source
 
-CREATE INDEX idx_anomalies_seller ON anomalies(seller_id, detected_at DESC);
-```
+**哲学**：层级始终派生，从不手动分配。管理员触发计算，而非分配。这确保定价诚实、明确例外和清洁审计。
 
-#### predictions
-```sql
-CREATE TABLE predictions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  predictions JSONB NOT NULL,
-  confidence_bands JSONB,
-  historical_cutoff TIMESTAMPTZ,
-  time_window JSONB,
-  data_sufficiency TEXT,
-  reproducibility_hash TEXT,
-  config_version TEXT,
-  signal_quality JSONB,
-  generated_at TIMESTAMPTZ DEFAULT NOW()
-);
+**访问控制**：层级对账数据和所有用户计划详情仅对管理员用户可访问。
 
-CREATE INDEX idx_predictions_seller ON predictions(seller_id, generated_at DESC);
-```
+### 7.13 权益
 
-#### insights
-```sql
-CREATE TABLE insights (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  severity TEXT CHECK (severity IN ('low', 'medium', 'high', 'critical')),
-  lifecycle_state TEXT DEFAULT 'generated' CHECK (lifecycle_state IN ('generated', 'confirmed', 'expired', 'superseded')),
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+**定义**：权益是授予超出用户层级限制的额外资源或能力的明确例外。权益与层级计算分离。
 
-CREATE INDEX idx_insights_seller_state ON insights(seller_id, lifecycle_state, created_at DESC);
-```
+**权益类型**：
+- webhook_bonus：额外的 webhook 交付配额
+- prediction_bonus：额外的预测请求配额
+\n**属性**：
+- type：权益类型\n- amount：奖励金额
+- expiresAt：可选的到期时间戳
+- reason：授予权益的解释
 
-#### health_scores
-```sql
-CREATE TABLE health_scores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  overall_score NUMERIC NOT NULL CHECK (overall_score >= 0 AND overall_score <= 100),
-  volatility NUMERIC,
-  anomaly_frequency NUMERIC,
-  predictive_risk NUMERIC,
-  data_consistency NUMERIC,
-  breakdown JSONB,
-  time_window JSONB,
-  data_sufficiency TEXT,
-  config_version TEXT,
-  calculated_at TIMESTAMPTZ DEFAULT NOW()
-);
+**目的**：权益允许管理员授予明确的例外，同时保持层级计算诚实和可审计。权益从不直接更改层级。
 
-CREATE INDEX idx_health_scores_seller ON health_scores(seller_id, calculated_at DESC);
-```
+### 7.14 查询计划
 
-#### behavioral_fingerprints
-```sql
-CREATE TABLE behavioral_fingerprints (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  fft_signature JSONB,
-  hfd_pattern NUMERIC,
-  timing_entropy NUMERIC,
-  pattern_type TEXT CHECK (pattern_type IN ('normal', 'bot', 'manipulation', 'irregular')),
-  confidence NUMERIC CHECK (confidence >= 0 AND confidence <= 1),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+**定义**：查询计划是分析请求的显式、确定性表示，编译为有向无环图（DAG）。查询计划包含数据源节点、转换节点、聚合节点、评分节点和输出节点。
 
-CREATE INDEX idx_fingerprints_seller ON behavioral_fingerprints(seller_id, created_at DESC);
-```
+**组成**：
+- **SourceNode**：环形缓冲区 / 聚合存储数据源
+- **TransformNode**：FIR、FFT、HFD 转换操作
+- **AggregateNode**：聚合操作
+- **ScoreNode**：评分操作
+- **OutputNode**：输出格式化
 
-### 4.2 Team & Project Tables
+**执行**：查询计划通过受控执行引擎执行，支持多线程和调度。
 
-#### teams
-```sql
-CREATE TABLE teams (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+**确定性**：查询计划必须是确定性的，相同输入始终产生相同的 DAG 和输出。
 
-#### team_members
-```sql
-CREATE TABLE team_members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
-  joined_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(team_id, user_id)
-);
+### 7.15 执行预算
 
-CREATE INDEX idx_team_members_team ON team_members(team_id);
-CREATE INDEX idx_team_members_user ON team_members(user_id);
-```
+**定义**：执行预算是为每个卖家或查询分配的计算资源限制。执行预算确保公平性和可预测的系统性能。
 
-#### projects
-```sql
-CREATE TABLE projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+**组成**：
+- CPU 时间限制
+- 内存限制
+- 查询复杂度限制
+\n**执行**：执行预算在查询执行引擎中执行，超出预算的查询被终止或降级。
 
-CREATE INDEX idx_projects_team ON projects(team_id);
-```
+### 7.16 联邦数据源
 
-#### tasks
-```sql
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed')),
-  assigned_to UUID REFERENCES auth.users(id),
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+**定义**：联邦数据源是可插拔的数据源抽象，支持跨多个系统或存储的查询执行。
 
-CREATE INDEX idx_tasks_project ON tasks(project_id);
-CREATE INDEX idx_tasks_assigned ON tasks(assigned_to);
-CREATE INDEX idx_tasks_status ON tasks(status);
-```
-
-### 4.3 Configuration & Audit Tables
-
-#### config_versions
-```sql
-CREATE TABLE config_versions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  version TEXT UNIQUE NOT NULL,
-  config_data JSONB NOT NULL,
-  effective_at TIMESTAMPTZ NOT NULL,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_config_versions_effective ON config_versions(effective_at DESC);
-```
-
-#### config_audit_log
-```sql
-CREATE TABLE config_audit_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  config_version_id UUID REFERENCES config_versions(id),
-  action TEXT NOT NULL CHECK (action IN ('created', 'updated', 'rolled_back')),
-  changed_by UUID REFERENCES auth.users(id),
-  changes JSONB,
-  timestamp TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_config_audit_timestamp ON config_audit_log(timestamp DESC);
-```
-
-#### webhooks
-```sql
-CREATE TABLE webhooks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-  url TEXT NOT NULL,
-  event_types TEXT[] NOT NULL,
-  secret TEXT NOT NULL,
-  enabled BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_webhooks_seller ON webhooks(seller_id);
-```
-
-#### webhook_logs
-```sql
-CREATE TABLE webhook_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  webhook_id UUID REFERENCES webhooks(id) ON DELETE CASCADE,
-  event_type TEXT NOT NULL,
-  payload JSONB NOT NULL,
-  response_status INTEGER,
-  response_body TEXT,
-  delivered_at TIMESTAMPTZ,
-  retry_count INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_webhook_logs_webhook ON webhook_logs(webhook_id, created_at DESC);
-```
-
-## 5. Security & Privacy
-
-### 5.1 Data Minimization
-- Strip all PII from event payloads
-- Store only behavioral signals and aggregated data
-- No raw individual user data in analysis pipeline
-- Fingerprints based on aggregated patterns only
-
-### 5.2 Encryption
-- All data encrypted at rest (database level)
-- All data encrypted in transit (TLS/SSL)
-- API keys hashed and salted
-- Webhook secrets encrypted
-
-### 5.3 Access Control
-- Role-based access control (RBAC) for team members
-- API key authentication for external integrations
-- JWT token-based authentication for web interface
-- Row-level security (RLS) policies in database
-
-### 5.4 Compliance
-- GDPR-compliant data handling
-- Data retention policies per pricing tier
-- Right to deletion support
-- Data export functionality
-
-## 6. Performance Requirements
-
-### 6.1 Response Times
-- P95 latency < 100ms for API endpoints
-- P99 latency < 200ms for API endpoints
-- Real-time updates < 500ms latency
-- Dashboard load time < 2 seconds
-
-### 6.2 Throughput
-- Support 10,000+ events/second ingestion
-- Support 1,000+ concurrent users
-- Cache hit rate > 85%
-- Database query optimization for sub-50ms queries
-
-### 6.3 Scalability
-- Horizontal scaling capability for edge functions
-- Database connection pooling
-- Efficient ring buffer management
-- Probabilistic caching to reduce computation
-
-## 7. Monitoring & Observability
-
-### 7.1 Metrics
-- API response times
-- Error rates
-- Cache hit rates
-- Database query performance
-- Webhook delivery success rates
-- System health metrics
-
-### 7.2 Logging
-- Structured logging for all API requests
-- Error tracking and alerting
-- Audit logs for configuration changes
-- Webhook delivery logs
-
-### 7.3 Alerting
-- System health alerts
-- Performance degradation alerts
-- Error rate threshold alerts
-- Configuration change notifications
-
-## 8. Testing Strategy
-
-### 8.1 Unit Tests
-- DSP algorithm correctness
-- Business logic validation
-- Utility function testing
-- Component testing
-
-### 8.2 Integration Tests
-- API endpoint testing
-- Database operations
-- Authentication flows
-- Payment processing
-
-### 8.3 End-to-End Tests
-- User registration and login flows
-- Event ingestion and analysis pipeline
-- Dashboard functionality
-- Payment and subscription flows
-
-### 8.4 Performance Tests
-- Load testing for API endpoints
-- Stress testing for event ingestion
-- Cache performance validation
-- Database query optimization
-
-## 9. Deployment Strategy
-
-### 9.1 Environments
-- Development: Local development environment
-- Staging: Pre-production testing environment
-- Production: Live production environment
-
-### 9.2 CI/CD Pipeline
-- Automated testing on pull requests
-- Automated deployment to staging
-- Manual approval for production deployment
-- Rollback capability
-
-### 9.3 Database Migrations
-- Version-controlled migration scripts
-- Automated migration execution
-- Rollback scripts for each migration
-- Data integrity validation
-
-## 10. Documentation
-
-### 10.1 API Documentation
-- OpenAPI/Swagger specification
-- Endpoint descriptions and examples
-- Authentication guide
-- Error code reference
-
-### 10.2 User Documentation
-- Getting started guide
-- Feature documentation
-- Integration guides
-- FAQ and troubleshooting
-
-### 10.3 Developer Documentation
-- Architecture overview
-- DSP algorithm documentation
-- Database schema documentation
-- Deployment guide
+**数据源类型**：
+- **RingBufferSource**：环形缓冲区数据源
+- **AggregatedSnapshotSource**：聚合快照数据源
+- **HistoricalColdStoreSource**：历史冷存储数据源
+- **ExternalWebhookSource**：外部 Webhook 数据源
+\n**执行**：查询计划可以跨多个数据源执行，结果在聚合层合并。

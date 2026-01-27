@@ -7,6 +7,7 @@ const EventIngestion = lazy(() => import('./pages/EventIngestion'));
 const SellerManagement = lazy(() => import('./pages/SellerManagement'));
 const WebhookManagement = lazy(() => import('./pages/WebhookManagement'));
 const FunnelAnalysis = lazy(() => import('./pages/FunnelAnalysis'));
+const QueryConsole = lazy(() => import('./pages/QueryConsole'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
@@ -48,6 +49,11 @@ const routes: RouteConfig[] = [
     name: 'Funnel Analysis',
     path: '/funnels',
     element: <FunnelAnalysis />
+  },
+  {
+    name: 'Query Console',
+    path: '/query-console',
+    element: <QueryConsole />
   },
   {
     name: 'Admin Panel',
