@@ -422,10 +422,6 @@ export default function AdminPanel() {
                   <CardHeader>
                     <CardTitle className="text-xl">{tier.name}</CardTitle>
                     <CardDescription>{tier.description}</CardDescription>
-                    <div className="pt-4">
-                      <span className="text-4xl font-bold">€{tier.price}</span>
-                      <span className="text-muted-foreground">/{tier.period}</span>
-                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ul className="space-y-2">
@@ -437,8 +433,8 @@ export default function AdminPanel() {
                       ))}
                     </ul>
                     <Button
-                      className="w-full"
-                      variant={currentTier.toLowerCase() === tier.name.toLowerCase() ? 'outline' : 'default'}
+                      className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                      variant="outline"
                       disabled={currentTier.toLowerCase() === tier.name.toLowerCase() || processingPayment}
                       onClick={() => handleUpgradeDowngrade(tier)}
                     >
@@ -509,7 +505,7 @@ export default function AdminPanel() {
                         <TableCell>
                           {tierState ? (
                             <Badge variant={getTierBadgeVariant(tierState.effective_tier)}>
-                              {tierState.effective_tier.toUpperCase()}
+                              {tierState.effective_tier.charAt(0).toUpperCase() + tierState.effective_tier.slice(1)} Tier
                             </Badge>
                           ) : (
                             <Badge variant="outline">Not Set</Badge>

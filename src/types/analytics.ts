@@ -7,6 +7,7 @@ export interface Seller {
   pricing_tier?: 'free' | 'basic' | 'pro' | 'enterprise';
   api_calls_count?: number;
   api_calls_limit?: number;
+  currency?: string;
 }
 
 export interface Event {

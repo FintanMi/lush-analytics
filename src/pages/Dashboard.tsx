@@ -116,6 +116,28 @@ export default function Dashboard() {
     }
   };
 
+  // Get currency symbol based on seller's currency or browser locale
+  const getCurrencySymbol = () => {
+    const currentSeller = sellers.find(s => s.id === selectedSeller);
+    const currency = currentSeller?.currency || 'USD';
+    
+    const currencySymbols: Record<string, string> = {
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'JPY': '¥',
+      'CNY': '¥',
+      'INR': '₹',
+      'AUD': 'A$',
+      'CAD': 'C$',
+      'CHF': 'CHF',
+      'SEK': 'kr',
+      'NZD': 'NZ$',
+    };
+    
+    return currencySymbols[currency] || '$';
+  };
+
   const metrics = useMemo(() => {
     const sales = events.filter(e => e.type === 'SALE');
     const clicks = events.filter(e => e.type === 'CLICK');
@@ -222,7 +244,7 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Sales"
-          value={`$${metrics.totalSales}`}
+          value={`${getCurrencySymbol()}${metrics.totalSales}`}
           icon={TrendingUp}
           description="Last 24 hours"
           status={anomalyData && anomalyData.anomalyScore > 0.7 ? 'critical' : 'normal'}
@@ -243,7 +265,7 @@ export default function Dashboard() {
         />
         <MetricsCard
           title="Avg Sale Value"
-          value={`$${metrics.avgSaleValue}`}
+          value={`${getCurrencySymbol()}${metrics.avgSaleValue}`}
           icon={Activity}
           description="Per transaction"
           status="normal"
