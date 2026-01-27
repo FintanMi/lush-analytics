@@ -11,6 +11,7 @@ The application now includes a redesigned modern frontend interface with navigat
 **New Features**: Team collaboration system with role-based access control (Admin/Member), project management, real-time task tracking, dashboard with task completion progress and assigned tasks, Stripe payment integration, and admin tier reconciliation system.
 
 **Performance Enhancements**: Lazy loading implementation for all pages, smooth page transitions with subtle animations using motion library.\n
+**Security Enhancements**: Admin-only access to tier reconciliation data and all user plan details, password reset functionality on login dialog.\n
 ## 2. Core Functionality
 
 ### 2.1 Event Ingestion
@@ -127,7 +128,8 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Benefits**: Optimize system resources while maintaining accuracy
 
 ### 2.14 Real-time Dashboard Integration
-- **Technology**: Supabase Realtime integration\n- **Functionality**: Real-time dashboard updates with AnomalyAlert component
+- **Technology**: Supabase Realtime integration
+- **Functionality**: Real-time dashboard updates with AnomalyAlert component
 - **Features**:
   - Real-time anomaly notifications
   - Real-time metrics updates
@@ -234,9 +236,9 @@ The application now includes a redesigned modern frontend interface with navigat
   - Rate limits per embed key (defined in centralized config by tier)
   - Light branding watermark for Free/Basic tiers
   - Default read-only scope (no write access unless explicitly granted)
-  - Require embed key authentication\n\n### 2.23 Auditable Configuration Management
-- **Functionality**: Track and audit all configuration changes
-- **Features**:
+  - Require embed key authentication\n
+### 2.23 Auditable Configuration Management
+- **Functionality**: Track and audit all configuration changes\n- **Features**:
   - Version control for configuration tables
   - Effective-from timestamp for each configuration change
   - Configuration snapshot storage with reports
@@ -300,18 +302,20 @@ The application now includes a redesigned modern frontend interface with navigat
 - **Styling**: Consistent with existing application styles and design system
 - **Performance Optimization**: Lazy loading applied to landing page sections and components
 \n### 2.27 User Authentication System
-- **Functionality**: Secure user authentication and authorization
-- **Features**:
+- **Functionality**: Secure user authentication and authorization\n- **Features**:
   - User registration with email and password
   - User login with email and password
-  - Password reset functionality
+  - **Password reset functionality with link on login dialog**
   - Session management\n  - JWT token-based authentication
   - **Post-Registration Redirect**: After successful registration, users are redirected based on selected pricing tier:\n    - Free tier users: Redirected to dashboard page
     - Paid tier users: Redirected to Stripe checkout, then to dashboard page after completing payment
+- **Login Dialog Password Reset Link**:
+  - **Location**: Positioned under the Don't have an account? Sign up link
+  - **Text**: Forgot your password? Reset it
+  - **Behavior**: Clicking this link opens password reset dialog or redirects to password reset page
 - **Endpoints**:
   - POST /auth/register: User registration
-  - POST /auth/login: User login
-  - POST /auth/logout: User logout
+  - POST /auth/login: User login\n  - POST /auth/logout: User logout
   - POST /auth/reset-password: Password reset request
   - POST /auth/confirm-reset: Confirm password reset
 \n### 2.28 Team Management System
@@ -324,6 +328,7 @@ The application now includes a redesigned modern frontend interface with navigat
     - Create and manage projects
     - Assign tasks to team members
     - Reconcile user pricing tiers\n    - Access admin panel without errors
+    - **View all user data and plan details in Tier Reconciliation section**
   - **Member**: Limited permissions
     - View team settings (read-only)
     - View projects and tasks
@@ -332,12 +337,14 @@ The application now includes a redesigned modern frontend interface with navigat
     - Cannot modify team settings
     - Cannot reconcile pricing tiers
     - Cannot access admin panel
+    - **Cannot view other users' data or plan details**
 - **Features**:
   - Team creation\n  - Member invitation via email
   - Member removal by admin
   - Role assignment and management
   - Team settings management (admin only)
   - **Admin Panel Access Control**: When logged-in users with Admin role click the Admin Panel button, they should be granted access without error messages. Proper role verification and access control must be implemented.
+  - **Tier Reconciliation Data Visibility**: Only Admin users can view all user data and plan details in the Tier Reconciliation section. Regular users cannot access this information.
 - **Endpoints**:
   - POST /teams: Create new team
   - GET /teams/:teamId: Get team details
@@ -375,7 +382,8 @@ The application now includes a redesigned modern frontend interface with navigat
   - Create tasks within projects
   - Assign tasks to team members
   - Update task status
-  - Update task details (title, description)\n  - Reassign tasks\n  - Real-time task updates using Supabase Realtime
+  - Update task details (title, description)
+  - Reassign tasks\n  - Real-time task updates using Supabase Realtime
   - Filter tasks by status
   - Filter tasks by assigned user
 - **Real-time Synchronization**:
@@ -396,7 +404,8 @@ The application now includes a redesigned modern frontend interface with navigat
     - Visual progress bar showing completion rate
     - Breakdown by status (todo, in progress, completed)
   - **Assigned Tasks Overview**:
-    - List of all tasks assigned to current user\n    - Task status indicators (colored badges)
+    - List of all tasks assigned to current user
+    - Task status indicators (colored badges)
     - Quick task status update functionality
     - Filter tasks by status
     - Sort tasks by creation date or due date
@@ -543,8 +552,8 @@ The application now includes a redesigned modern frontend interface with navigat
   - DELETE /webhooks/:id: Delete webhook
   - GET /webhooks/:id/deliveries: View webhook delivery history
   - POST /webhooks/:id/test: Test webhook delivery
-\n### 2.34 Funnel Analysis
-- **Functionality**: Funnels are aggregations of event types\n- **Core Principles**:
+
+### 2.34 Funnel Analysis\n- **Functionality**: Funnels are aggregations of event types\n- **Core Principles**:
   - Funnels are deterministic
   - Funnels are reproducible
   - Funnels are explainable
@@ -615,7 +624,8 @@ funnels:
 - **Metrics Tracked** (per seller, per month):
   - totalDeliveries: Total webhook deliveries
   - successfulDeliveries: Successful webhook deliveries
-  - failedDeliveries: Failed webhook deliveries\n  - uniqueEventTypes: Number of unique event types
+  - failedDeliveries: Failed webhook deliveries
+  - uniqueEventTypes: Number of unique event types
   - peakHourlyRate: Peak hourly delivery rate
 - **Tier Mapping** (data-driven, stored in centralized config):
   - Free Tier: 0 monthly webhook deliveries, no webhooks
@@ -667,7 +677,9 @@ interface TierState {
      - source (admin_reconcile)
   5. Emit event: tier.reconciled
 - **Admin Panel Visibility**:
-  - Current tier\n  - Usage vs limits
+  - **Admin-Only Access**: Only users with Admin role can view the Tier Reconciliation section
+  - **All User Data Display**: Admin users can view all user data and plan details in the Tier Reconciliation section
+  - **Regular User Restriction**: Regular users (non-admin) cannot access or view any user data or plan details in the Tier Reconciliation section\n  - Current tier\n  - Usage vs limits
   - Pricing rule that applied
   - Last reconciliation source
   - Next scheduled reconciliation\n- **Entitlements System** (Separate from Tier Reconciliation):\n```typescript
@@ -685,6 +697,7 @@ interface Entitlement {
   - POST /admin/users/:id/entitlements: Grant entitlement (admin only)
   - GET /admin/users/:id/entitlements: List user entitlements (admin only)
   - DELETE /admin/entitlements/:id: Revoke entitlement (admin only)
+  - **GET /admin/users/all-tier-data: Get all user data and plan details (admin only)**
 - **Audit Trail**:
   - All tier reconciliations logged with timestamp, source, and resulting tier
   - All entitlement grants/revocations logged with reason and admin user
@@ -693,6 +706,7 @@ interface Entitlement {
   - Admins trigger computation, not assignment
   - Entitlements are explicit and auditable
   - Pricing policy is single source of truth for tier determination
+  - **Tier reconciliation data is admin-only, never exposed to regular users**
 
 ### 2.37 Admin Panel Pricing Plan Management
 - **Functionality**: Admin panel interface for users to manage their subscription plans
@@ -741,8 +755,7 @@ interface Entitlement {
 
 ### 3.1 Data Processing\n- Pre-allocated fixed-size contiguous ring buffers for real-time data storage
 - Circular access using index mod window size\n- Zero per-event reallocation, no per-event object churn
-- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)
-- Batch processing support for high-throughput scenarios
+- Streaming analytics processing\n- DSP algorithm integration (FIR, FFT, HFD)\n- Batch processing support for high-throughput scenarios
 - Deterministic computation pipeline with fixed random seeds and consistent ordering
 - **Aggregation-First**: All analytics operate on aggregated data, never on raw individual events
 \n### 3.2 Caching Strategy with Temporal Locality
@@ -770,7 +783,9 @@ interface Entitlement {
 - Funnel analysis endpoints
 - Admin tier reconciliation endpoints
 - Admin pricing plan management endpoints
-\n### 3.4 Dashboard Components
+- **Admin-only endpoints for viewing all user tier data**
+
+### 3.4 Dashboard Components
 - Mode toggle functionality (light/dark theme)
 - Time series charts with proper timestamp handling:\n  - Internal numeric timestamps
   - Formatted display in tooltips and axis ticks
@@ -790,7 +805,7 @@ interface Entitlement {
 - **Task Completion Progress Widget**: Display overall task completion percentage for current user
 - **Assigned Tasks Widget**: Display list of tasks assigned to current user with status indicators and quick update functionality
 - **Navigation in Main Section**: Navigation styled in the main section (no traditional sidebar)
-- **Admin Tier Reconciliation Panel**: Display tier state, usage metrics, reconciliation controls (admin only)
+- **Admin Tier Reconciliation Panel**: Display tier state, usage metrics, reconciliation controls (admin only, shows all user data)
 - **Admin Pricing Plan Management Panel**: Display pricing plans, current plan, upgrade/downgrade options, cancel subscription button (admin panel)
 - **Lazy Loading**: All dashboard components implement lazy loading for improved performance
 
@@ -864,7 +879,9 @@ interface Entitlement {
 - **Webhooks as Side-Effects**: Webhooks are side-effects of insight state changes, never as inputs
 - **Funnel Determinism**: Funnel analysis must be deterministic and reproducible
 - **Tier as Derived State**: Tier is always derived from usage and policy, never manually assigned
-\n### 3.13 Encryption Strategy
+- **Admin-Only Tier Data Access**: Tier reconciliation data and all user plan details are accessible only to Admin users
+
+### 3.13 Encryption Strategy
 - **At Rest Encryption**:
   - Event storage: Encrypted\n  - Configuration tables: Encrypted
   - Reports: Encrypted
@@ -913,17 +930,23 @@ interface Entitlement {
 - **Authentication Method**: JWT token-based authentication
 - **Session Management**: Secure session handling with token refresh
 - **Role-Based Access Control (RBAC)**:
-  - Admin role: Full permissions including tier reconciliation, pricing plan management, and admin panel access
+  - Admin role: Full permissions including tier reconciliation, pricing plan management, admin panel access, and viewing all user tier data
   - Member role: Limited permissions\n- **Permission Enforcement**: Server-side permission checks for all protected endpoints
 - **Token Security**: HTTP-only cookies for token storage, CSRF protection
 - **Post-Registration Flow**: \n  - Free tier users: Redirect to dashboard page after successful registration
   - Paid tier users: Redirect to Stripe checkout after successful registration, then redirect to dashboard page after completing payment
 - **Admin Panel Access Control**: Proper role verification to ensure Admin users can access admin panel without errors
-\n### 3.16 Team Collaboration Architecture
+- **Password Reset Flow**:
+  - User clicks Forgot your password? Reset it link on login dialog
+  - User is redirected to password reset page or dialog
+  - User enters email address\n  - System sends password reset email with secure token
+  - User clicks link in email and sets new password
+  - User is redirected to login page\n\n### 3.16 Team Collaboration Architecture
 - **Multi-Tenancy**: Team-based data isolation
 - **Real-time Collaboration**: Supabase Realtime for real-time team updates
 - **Access Control**: Team-level and project-level access control
 - **Invitation System**: Email-based member invitation with secure tokens
+- **Data Visibility Control**: Admin users can view all user data and plan details; regular users cannot
 \n### 3.17 Payment Processing Architecture
 - **Payment Gateway**: Stripe integration\n- **Subscription Management**: Stripe Subscriptions API
 - **Webhook Handling**: Secure webhook handling with signature verification
@@ -962,8 +985,7 @@ interface Entitlement {
   - Storage usage
 - **Pricing Policy Engine**:
   - Load current pricing config
-  - Apply grace rules
-  - Compute effective tier\n- **State Persistence**:
+  - Apply grace rules\n  - Compute effective tier\n- **State Persistence**:
   - effectiveTier\n  - pricingVersion
   - computedAt
   - source (scheduled or admin_reconcile)
@@ -972,6 +994,7 @@ interface Entitlement {
   - Explicit exceptions with expiration and reason
   - Admin-granted and auditable
 - **Audit Trail**: Full logging of all tier changes and reconciliations
+- **Access Control**: Tier reconciliation data and all user plan details accessible only to Admin users
 
 ### 3.21 Performance Optimization Architecture
 - **Lazy Loading Strategy**:
@@ -1022,7 +1045,8 @@ interface Entitlement {
 - Efficient data movement with pre-allocated ring buffers and zero per-event churn
 - Single primary trigger for alerts with contextual information
 - Auditable configuration management with version control and snapshots
-- Formalized insight lifecycle with state management\n- Data minimization and privacy as hard invariants
+- Formalized insight lifecycle with state management
+- Data minimization and privacy as hard invariants
 - Aggregation-first analytics approach
 - Tier-based retention policies with automatic decay
 - Codified system invariants for consistency and reliability
@@ -1048,6 +1072,8 @@ interface Entitlement {
 - Optimized animation performance for 60fps user experience
 - Seamless landing page to registration to payment flow integration
 - Proper admin panel access control without error messages for Admin users
+- **Admin-only access to tier reconciliation data and all user plan details**
+- **Password reset functionality with link on login dialog**
 \n## 5. System Charter
 
 ### 5.1 Purpose and Scope
@@ -1062,8 +1088,7 @@ The system guarantees deterministic behavior: same inputs must always produce sa
 The system enforces strict data minimization as a hard invariant. No personally identifiable information (PII) such as names, emails, or addresses may enter the analytics path. Seller identifiers are always opaque proxy keys. Event payloads are stripped to behavioral signals only. All analytics operate on aggregated data, never on raw individual events. This principle is non-negotiable and enforced at the architectural level.
 
 #### 5.2.3 Transparency and Explainability
-The system provides full transparency into its decision-making processes. All analysis outputs include clear time window definitions, data sufficiency metrics, confidence messaging, signal quality assessments, and configuration version references. Users must understand what the system knows, what it does not know, and how confident it is in its outputs.
-
+The system provides full transparency into its decision-making processes. All analysis outputs include clear time window definitions, data sufficiency metrics, confidence messaging, signal quality assessments, and configuration version references. Users must understand what the system knows, what it does not know, and how confident it is in its outputs.\n
 #### 5.2.4 Configuration as Single Source of Truth
 All system parameters, thresholds, and behaviors are defined in the centralized configuration system. No magic numbers or hardcoded logic are permitted. Configuration changes are versioned, timestamped, and auditable. This principle ensures consistency, maintainability, and governance.\n
 #### 5.2.5 Composability Over Reusability
@@ -1082,6 +1107,9 @@ Funnel analysis must be deterministic and reproducible. Funnels are declarativel
 #### 5.2.10 Tier as Derived State
 Pricing tier is a derived state, not a manual attribute. Tier is always computed from usage metrics, pricing policy, and grace rules. Admins trigger computation, not assignment. This principle ensures pricing honesty, explicit exceptions, and clean audits.
 
+#### 5.2.11 Admin-Only Access to Sensitive Data
+Tier reconciliation data and all user plan details are accessible only to Admin users. Regular users cannot view or access this information. This principle ensures data privacy and proper access control.
+
 ### 5.3 System Invariants
 
 The following invariants are codified and enforced at the system level. Violations of these invariants constitute system failures and must be prevented by design:\n
@@ -1095,6 +1123,7 @@ The following invariants are codified and enforced at the system level. Violatio
 9. **Webhooks as Side-Effects**: Webhooks are side-effects of insight state changes, never as inputs.
 10. **Funnel Determinism**: Funnel analysis must be deterministic and reproducible.
 11. **Tier as Derived State**: Tier is always derived from usage and policy, never manually assigned.
+12. **Admin-Only Tier Data Access**: Tier reconciliation data and all user plan details are accessible only to Admin users.
 
 ### 5.4 Governance and Change Management
 
@@ -1126,7 +1155,8 @@ We guarantee deterministic behavior: same inputs always produce same outputs. Th
 
 We provide full transparency into our decision-making processes. All analysis outputs include clear time window definitions, data sufficiency metrics, confidence messaging, signal quality assessments, and configuration version references. Users always know what the system knows, what it does not know, and how confident it is in its outputs.
 
-### 6.6 Retention and Data Lifecycle\n
+### 6.6 Retention and Data Lifecycle
+
 We enforce tier-based retention policies with explicit expiry windows. Data is automatically deleted based on retention policies, ensuring compliance with data protection regulations and minimizing long-term storage risks. Retention periods are clearly communicated and enforced at the system level.
 
 ### 6.7 Security Incident Response
@@ -1146,8 +1176,7 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Definition**: An anomaly is a statistically significant deviation from expected behavioral patterns, quantified as a probabilistic score in the range [0, 1]. An anomaly score of 0 indicates no deviation; a score of 1 indicates maximum deviation.
 
 **Composition**: Anomaly scores are calculated using a Bayesian/probabilistic combination of:\n- **FFT Peak Contribution**: Periodic spikes detected through Fast Fourier Transform analysis.\n- **HFD Complexity Contribution**: Time series complexity measured via Higuchi Fractal Dimension.
-- **Trend Deviation Contribution**: Deviation from smoothed trend line.
-- **Smoothed Deviation Contribution**: Deviation from FIR smoothed baseline.
+- **Trend Deviation Contribution**: Deviation from smoothed trend line.\n- **Smoothed Deviation Contribution**: Deviation from FIR smoothed baseline.
 
 **Interpretation**: Anomalies represent potential issues such as bot activity, sales spikes, or unusual behavioral patterns. They are signals for investigation, not definitive diagnoses.
 
@@ -1181,7 +1210,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 **Definition**: Signal quality is an assessment of the reliability and interpretability of input data. High signal quality indicates clean, consistent, and interpretable data. Low signal quality indicates noisy, inconsistent, or degraded data patterns.
 
 **Signal Quality Indicators**:
-- **Degraded Patterns**: Constant zero values, perfect periodicity, impossible regularity. These patterns are flagged as low-confidence signal mechanisms.\n- **Edge Case Flags**: Indicators of unusual or boundary case data patterns.\n- **Noise Level**: Assessment of data noise and variability.
+- **Degraded Patterns**: Constant zero values, perfect periodicity, impossible regularity. These patterns are flagged as low-confidence signal mechanisms.
+- **Edge Case Flags**: Indicators of unusual or boundary case data patterns.\n- **Noise Level**: Assessment of data noise and variability.
 \n**Handling**: Signal quality metrics are presented in all analysis outputs. Low signal quality reduces confidence and is communicated to users through confidence-aware messaging.
 
 **Philosophy**: Edge cases and degraded patterns are treated as signals, not errors. They provide valuable information about data quality and behavioral patterns.
@@ -1224,22 +1254,19 @@ This glossary defines the precise meaning of key terms used throughout the syste
 
 **Monitoring**: Systemic anomalies are monitored through dedicated system health endpoints and dashboard panels.
 
-### 7.10 Webhook
-
+### 7.10 Webhook\n
 **Definition**: A webhook is a side-effect of insight state changes, never as input. Webhooks only observe computed facts, never trigger recomputation.
 
 **Event Types**:
 - anomaly_detected: Anomaly detected\n- alert_triggered: Alert triggered
 - prediction_updated: Prediction updated
-- insight_state_changed: Insight state changed
-- weekly_report_ready: Weekly report ready
-- pricing_tier_changed: Pricing tier changed
-\n**Payload Requirements**: All webhook payloads must include reproducibilityHash, configVersion, timeWindow, dataSufficiency, and signalQuality.
+- insight_state_changed: Insight state changed\n- weekly_report_ready: Weekly report ready
+- pricing_tier_changed: Pricing tier changed\n\n**Payload Requirements**: All webhook payloads must include reproducibilityHash, configVersion, timeWindow, dataSufficiency, and signalQuality.
 
 **Delivery Guarantees**: Webhook delivery is asynchronous and best-effort. Delivery failures never affect analytics computation.
 
-### 7.11 Funnel\n
-**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
+### 7.11 Funnel
+\n**Definition**: A funnel is an aggregation of event types used to analyze user conversion and dropoff across a series of steps. Funnels must be deterministic, reproducible, and explainable.
 
 **Step Constraints**:
 - Steps must be temporally monotonic (chronological order)\n- Funnel windows must align with ring buffer windows
@@ -1266,6 +1293,8 @@ This glossary defines the precise meaning of key terms used throughout the syste
 \n**State Persistence**: effectiveTier, pricingVersion, computedAt, source
 
 **Philosophy**: Tier is always derived, never manually assigned. Admins trigger computation, not assignment. This ensures pricing honesty, explicit exceptions, and clean audits.\n
+**Access Control**: Tier reconciliation data and all user plan details are accessible only to Admin users.
+
 ### 7.13 Entitlement
 
 **Definition**: An entitlement is an explicit exception granting additional resources or capabilities beyond the user's tier limits. Entitlements are separate from tier computation.\n

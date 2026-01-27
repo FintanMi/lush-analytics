@@ -8,6 +8,7 @@ const SellerManagement = lazy(() => import('./pages/SellerManagement'));
 const WebhookManagement = lazy(() => import('./pages/WebhookManagement'));
 const FunnelAnalysis = lazy(() => import('./pages/FunnelAnalysis'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 
 interface RouteConfig {
@@ -57,6 +58,12 @@ const routes: RouteConfig[] = [
     name: 'Payment Success',
     path: '/payment-success',
     element: <PaymentSuccess />,
+    visible: false
+  },
+  {
+    name: 'Reset Password',
+    path: '/reset-password',
+    element: <ResetPassword />,
     visible: false
   }
 ];

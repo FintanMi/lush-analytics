@@ -137,6 +137,7 @@ export default function LandingPage() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedTier, setSelectedTier] = useState<typeof pricingTiers[0] | null>(null);
   const [isLoginMode, setIsLoginMode] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -161,6 +162,41 @@ export default function LandingPage() {
 
   const handleLogin = () => {
     openDialog(true);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({
+        title: 'Email Required',
+        description: 'Please enter your email address to reset your password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Check your email for a link to reset your password.',
+      });
+
+      closeDialog();
+    } catch (error: any) {
+      toast({
+        title: 'Password Reset Failed',
+        description: error.message || 'Failed to send password reset email. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const processCheckout = async (tier: typeof pricingTiers[0]) => {
@@ -623,17 +659,28 @@ export default function LandingPage() {
             </div>
           </form>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <button
               type="button"
               onClick={() => setIsLoginMode(!isLoginMode)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors block w-full"
             >
               {isLoginMode 
                 ? "Don't have an account? Sign up" 
                 : "Already have an account? Login"
               }
             </button>
+            
+            {isLoginMode && (
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isResettingPassword}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors block w-full"
+              >
+                {isResettingPassword ? 'Sending reset link...' : 'Forgot your password?'}
+              </button>
+            )}
           </div>
 
           <p className="text-xs text-center text-muted-foreground">

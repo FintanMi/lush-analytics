@@ -123,12 +123,35 @@ export default function AdminPanel() {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [processingPayment, setProcessingPayment] = useState(false);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
+    checkAdminStatus();
     loadUsers();
     loadCurrentUserTier();
   }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        
+        // Check if user is admin
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        setIsAdmin(profile?.role === 'admin');
+      }
+    } catch (error) {
+      console.error('Failed to check admin status:', error);
+    }
+  };
 
   const loadCurrentUserTier = async () => {
     try {
@@ -189,10 +212,14 @@ export default function AdminPanel() {
 
       setUsers(mappedUsers);
 
-      // Load tier states for all users
-      const { data: states, error: statesError } = await supabase
-        .from('tier_states')
-        .select('*');
+      // Load tier states - filter by current user if not admin
+      let statesQuery = supabase.from('tier_states').select('*');
+      
+      if (!isAdmin && currentUserId) {
+        statesQuery = statesQuery.eq('user_id', currentUserId);
+      }
+
+      const { data: states, error: statesError } = await statesQuery;
 
       if (statesError) {
         console.error('Error loading tier states:', statesError);
@@ -491,9 +518,19 @@ export default function AdminPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tier Reconciliation</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Tier Reconciliation
+            {!isAdmin && (
+              <Badge variant="outline" className="text-xs">
+                Your Account Only
+              </Badge>
+            )}
+          </CardTitle>
           <CardDescription>
-            Recalculate user tiers based on current usage and pricing policy. This action computes the effective tier deterministically without manual intervention.
+            {isAdmin 
+              ? 'Recalculate user tiers based on current usage and pricing policy. This action computes the effective tier deterministically without manual intervention.'
+              : 'View and manage your account tier information.'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -517,9 +554,11 @@ export default function AdminPanel() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => {
-                    const tierState = tierStates[user.id];
-                    return (
+                  users
+                    .filter(user => isAdmin || user.id === currentUserId)
+                    .map((user) => {
+                      const tierState = tierStates[user.id];
+                      return (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
