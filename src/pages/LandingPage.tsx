@@ -136,6 +136,7 @@ export default function LandingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedTier, setSelectedTier] = useState<typeof pricingTiers[0] | null>(null);
+  const [isLoginMode, setIsLoginMode] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -154,8 +155,12 @@ export default function LandingPage() {
     } else {
       // User not logged in, open signup dialog
       setSelectedTier(tier);
-      openDialog();
+      openDialog(false);
     }
+  };
+
+  const handleLogin = () => {
+    openDialog(true);
   };
 
   const processCheckout = async (tier: typeof pricingTiers[0]) => {
@@ -185,7 +190,12 @@ export default function LandingPage() {
       }
 
       if (data?.code === 'SUCCESS' && data?.data?.url) {
-        window.location.href = data.data.url;
+        // Use window.top to ensure redirect happens at top level (not in iframe)
+        if (window.top) {
+          window.top.location.href = data.data.url;
+        } else {
+          window.location.href = data.data.url;
+        }
       } else {
         throw new Error('Invalid response from payment service');
       }
@@ -219,12 +229,17 @@ export default function LandingPage() {
     }
   };
 
-  const openDialog = () => {
+  const openDialog = (loginMode = false) => {
+    setIsLoginMode(loginMode);
+    setEmail('');
+    setPassword('');
     dialogRef.current?.showModal();
   };
 
   const closeDialog = () => {
     dialogRef.current?.close();
+    setIsLoginMode(false);
+    setSelectedTier(null);
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -232,46 +247,70 @@ export default function LandingPage() {
     setIsSubmitting(true);
 
     try {
-      // Sign up the user
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast({
-          title: 'Account Created!',
-          description: 'Welcome to Lush Analytics.',
+      if (isLoginMode) {
+        // Login the user
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
 
-        closeDialog();
+        if (error) throw error;
 
-        // Handle tier-based redirect
-        if (selectedTier) {
-          if (selectedTier.priceValue === 0) {
-            // Free tier - redirect to dashboard
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 500);
-          } else {
-            // Paid tier - redirect to Stripe checkout
-            setTimeout(async () => {
-              await processCheckout(selectedTier);
-            }, 500);
-          }
-        } else {
-          // Default to dashboard
+        if (data.user) {
+          toast({
+            title: 'Welcome Back!',
+            description: 'You have successfully logged in.',
+          });
+
+          closeDialog();
+
+          // Redirect to dashboard
           setTimeout(() => {
             navigate('/dashboard');
           }, 500);
         }
+      } else {
+        // Sign up the user
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          toast({
+            title: 'Account Created!',
+            description: 'Welcome to Lush Analytics.',
+          });
+
+          closeDialog();
+
+          // Handle tier-based redirect
+          if (selectedTier) {
+            if (selectedTier.priceValue === 0) {
+              // Free tier - redirect to dashboard
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 500);
+            } else {
+              // Paid tier - redirect to Stripe checkout
+              setTimeout(async () => {
+                await processCheckout(selectedTier);
+              }, 500);
+            }
+          } else {
+            // Default to dashboard
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 500);
+          }
+        }
       }
     } catch (error: any) {
       toast({
-        title: 'Signup Failed',
-        description: error.message || 'Failed to create account. Please try again.',
+        title: isLoginMode ? 'Login Failed' : 'Signup Failed',
+        description: error.message || `Failed to ${isLoginMode ? 'log in' : 'create account'}. Please try again.`,
         variant: 'destructive',
       });
     } finally {
@@ -328,6 +367,14 @@ export default function LandingPage() {
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="text-lg px-8 py-6"
+                onClick={handleLogin}
+              >
+                Login
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -500,9 +547,14 @@ export default function LandingPage() {
       >
         <div className="p-8 space-y-6">
           <div className="space-y-2">
-            <h3 className="text-2xl font-bold tracking-tight">Create Your Account</h3>
+            <h3 className="text-2xl font-bold tracking-tight">
+              {isLoginMode ? 'Welcome Back' : 'Create Your Account'}
+            </h3>
             <p className="text-muted-foreground">
-              Sign up to get started with Lush Analytics.
+              {isLoginMode 
+                ? 'Log in to access your Lush Analytics dashboard.' 
+                : 'Sign up to get started with Lush Analytics.'
+              }
             </p>
           </div>
           
@@ -529,7 +581,7 @@ export default function LandingPage() {
               <Input
                 id="dialog-password"
                 type="password"
-                placeholder="Create a password"
+                placeholder={isLoginMode ? "Enter your password" : "Create a password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -538,7 +590,7 @@ export default function LandingPage() {
               />
             </div>
 
-            {selectedTier && (
+            {!isLoginMode && selectedTier && (
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium">Selected Plan: {selectedTier.name}</p>
                 <p className="text-xs text-muted-foreground">
@@ -556,7 +608,10 @@ export default function LandingPage() {
                 className="flex-1"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                {isSubmitting 
+                  ? (isLoginMode ? 'Logging in...' : 'Creating Account...') 
+                  : (isLoginMode ? 'Login' : 'Sign Up')
+                }
               </Button>
               <Button 
                 type="button" 
@@ -567,6 +622,19 @@ export default function LandingPage() {
               </Button>
             </div>
           </form>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsLoginMode(!isLoginMode)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isLoginMode 
+                ? "Don't have an account? Sign up" 
+                : "Already have an account? Login"
+              }
+            </button>
+          </div>
 
           <p className="text-xs text-center text-muted-foreground">
             By signing up, you agree to our Terms of Service and Privacy Policy
