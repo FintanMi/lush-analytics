@@ -63,7 +63,6 @@ const pricingTiers = [
       'Priority email support',
       'Up to 5 seller accounts',
       'Anomaly detection',
-      'Basic predictions',
       'Privacy by Design',
       'High Performance'
     ],
