@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { 
   TrendingUp, 
   Shield, 
@@ -15,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
 const features = [
   {
@@ -51,7 +54,7 @@ const features = [
 
 const pricingTiers = [
   {
-    name: 'Basic',
+    name: 'Free',
     price: '0',
     priceValue: 0,
     period: 'month',
@@ -68,9 +71,9 @@ const pricingTiers = [
     highlighted: false
   },
   {
-    name: 'Free',
-    price: '50',
-    priceValue: 50,
+    name: 'Basic',
+    price: '29',
+    priceValue: 29,
     period: 'month',
     description: 'For all your business needs',
     features: [
@@ -116,6 +119,7 @@ export default function LandingPage() {
   const [selectedTier, setSelectedTier] = useState<typeof pricingTiers[0] | null>(null);
   const [isLoginMode, setIsLoginMode] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [userSelectedTier, setUserSelectedTier] = useState<typeof pricingTiers[0]>(pricingTiers[0]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -243,6 +247,10 @@ export default function LandingPage() {
     setIsLoginMode(loginMode);
     setEmail('');
     setPassword('');
+    // Initialize tier selection to first tier (Free) when opening signup
+    if (!loginMode) {
+      setUserSelectedTier(pricingTiers[0]);
+    }
     dialogRef.current?.showModal();
   };
 
@@ -274,16 +282,19 @@ export default function LandingPage() {
 
           closeDialog();
 
-          // Redirect to dashboard
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 500);
+          // Navigate immediately without delay
+          navigate('/dashboard');
         }
       } else {
         // Sign up the user
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              tier: userSelectedTier.name.toLowerCase(),
+            }
+          }
         });
 
         if (error) throw error;
@@ -291,21 +302,29 @@ export default function LandingPage() {
         if (data.user) {
           toast({
             title: 'Account Created!',
-            description: 'Welcome to Lush Analytics.',
+            description: `Welcome to Lush Analytics. You're on the ${userSelectedTier.name} tier.`,
           });
 
           closeDialog();
 
-          // Redirect to dashboard instead of payment
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 500);
+          // Navigate immediately without delay
+          navigate('/dashboard');
         }
       }
     } catch (error: any) {
+      const errorMessage = error.message || `Failed to ${isLoginMode ? 'log in' : 'create account'}. Please try again.`;
+      
+      // Provide helpful error messages
+      let userFriendlyMessage = errorMessage;
+      if (!isLoginMode && errorMessage.includes('already registered')) {
+        userFriendlyMessage = 'This email is already registered. Please log in instead.';
+      } else if (isLoginMode && errorMessage.includes('Invalid login credentials')) {
+        userFriendlyMessage = 'Invalid email or password. Please try again.';
+      }
+      
       toast({
         title: isLoginMode ? 'Login Failed' : 'Signup Failed',
-        description: error.message || `Failed to ${isLoginMode ? 'log in' : 'create account'}. Please try again.`,
+        description: userFriendlyMessage,
         variant: 'destructive',
       });
     } finally {
@@ -425,18 +444,27 @@ export default function LandingPage() {
           </div>
 
           {/* Single Pricing Card */}
-          <div className="flex justify-center max-w-6xl mx-auto">
+          <div className="flex justify-center gap-6 max-w-6xl mx-auto flex-wrap">
             {pricingTiers.map((tier) => (
               <Card 
                 key={tier.name} 
-                className="relative border-primary shadow-lg w-full max-w-md"
+                className={cn(
+                  "relative border-primary shadow-lg w-full max-w-md",
+                  tier.highlighted && "ring-2 ring-primary"
+                )}
               >
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground">Recommended</Badge>
-                </div>
+                {tier.highlighted && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground">Recommended</Badge>
+                  </div>
+                )}
                 <CardHeader>
                   <CardTitle className="text-2xl">{tier.name}</CardTitle>
                   <CardDescription>{tier.description}</CardDescription>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold">€{tier.price}</span>
+                    <span className="text-muted-foreground">/{tier.period}</span>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
@@ -449,7 +477,7 @@ export default function LandingPage() {
                   </ul>
                   <Button 
                     className="w-full" 
-                    variant="default"
+                    variant={tier.highlighted ? "default" : "outline"}
                     size="lg"
                     onClick={() => handleTierSelection(tier)}
                     disabled={processingPayment}
@@ -556,9 +584,30 @@ export default function LandingPage() {
               />
             </div>
 
-            {!isLoginMode && selectedTier && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">Selected Plan: {selectedTier.name}</p>
+            {!isLoginMode && (
+              <div className="space-y-3 pt-2">
+                <label className="text-sm font-medium">Select Your Plan</label>
+                <RadioGroup
+                  value={userSelectedTier.name}
+                  onValueChange={(value) => {
+                    const tier = pricingTiers.find(t => t.name === value);
+                    if (tier) setUserSelectedTier(tier);
+                  }}
+                  className="space-y-3"
+                >
+                  {pricingTiers.map((tier) => (
+                    <div key={tier.name} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <RadioGroupItem value={tier.name} id={`tier-${tier.name}`} className="mt-1" />
+                      <Label htmlFor={`tier-${tier.name}`} className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold">{tier.name}</span>
+                          <span className="text-sm font-bold">€{tier.price}/{tier.period}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{tier.description}</p>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
             )}
 

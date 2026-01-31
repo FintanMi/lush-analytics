@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,7 +57,7 @@ interface PricingTier {
 
 const pricingTiers: PricingTier[] = [
   {
-    name: 'Basic',
+    name: 'Free',
     price: '0',
     priceValue: 0,
     period: 'month',
@@ -73,9 +74,9 @@ const pricingTiers: PricingTier[] = [
     highlighted: false
   },
   {
-    name: 'Free',
-    price: '50',
-    priceValue: 50,
+    name: 'Basic',
+    price: '29',
+    priceValue: 29,
     period: 'month',
     description: 'For all your business needs',
     features: [
@@ -421,12 +422,15 @@ export default function AdminPanel() {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Available Plan</h3>
-            <div className="flex justify-center">
+            <h3 className="text-lg font-semibold mb-4">Available Plans</h3>
+            <div className="flex justify-center gap-6 flex-wrap">
               {pricingTiers.map((tier) => (
                 <Card 
                   key={tier.name} 
-                  className="border-primary w-full max-w-md relative"
+                  className={cn(
+                    "border-primary w-full max-w-md relative",
+                    tier.highlighted && "ring-2 ring-primary"
+                  )}
                 >
                   {currentTier.toLowerCase() === tier.name.toLowerCase() && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -438,6 +442,10 @@ export default function AdminPanel() {
                   <CardHeader>
                     <CardTitle className="text-xl">{tier.name}</CardTitle>
                     <CardDescription>{tier.description}</CardDescription>
+                    <div className="mt-4">
+                      <span className="text-3xl font-bold">€{tier.price}</span>
+                      <span className="text-muted-foreground">/{tier.period}</span>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ul className="space-y-2">
