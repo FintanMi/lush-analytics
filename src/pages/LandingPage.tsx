@@ -51,6 +51,23 @@ const features = [
 
 const pricingTiers = [
   {
+    name: 'Basic',
+    price: '0',
+    priceValue: 0,
+    period: 'month',
+    description: 'Perfect for getting started',
+    features: [
+      'Up to 10,000 events/month',
+      'Basic analytics dashboard',
+      '7-day data retention',
+      'Email support',
+      'Single seller account',
+      'Core anomaly detection',
+      'Standard performance'
+    ],
+    highlighted: false
+  },
+  {
     name: 'Free',
     price: '50',
     priceValue: 50,

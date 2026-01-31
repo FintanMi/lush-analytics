@@ -326,3 +326,99 @@ export const detectSystemicAnomalies = {
     };
   },
 };
+
+/**
+ * Advanced Algorithm Integration
+ * 
+ * References to advanced time-series algorithms for enhanced signal quality assessment.
+ * See: src/config/advanced-algorithms.ts and src/services/advanced-algorithms.ts
+ */
+export const ADVANCED_ALGORITHMS = {
+  /**
+   * Time-Series Algorithms
+   */
+  TIME_SERIES: {
+    MATRIX_PROFILE: 'matrix_profile',           // Motif/discord detection
+    BOCPD: 'bayesian_change_point',             // Regime shift detection
+    SEASONAL_HYBRID_ESD: 'seasonal_hybrid_esd', // Seasonality-aware anomaly detection
+    COPULA: 'copula_dependency',                // Cross-metric relationship monitoring
+    DTW: 'dynamic_time_warping',                // Behavioral signature comparison
+  } as const,
+
+  /**
+   * Signal Quality Metrics
+   */
+  QUALITY_METRICS: {
+    SNR: 'signal_to_noise_ratio',               // Data quality measurement
+    ESS: 'effective_sample_size',               // Autocorrelation-adjusted count
+    WINDOW_STABILITY: 'window_stability',       // Rolling window consistency
+    TEMPORAL_COVERAGE: 'temporal_coverage',     // Time bucket population
+    ENTROPY_DRIFT: 'entropy_drift',             // Pattern distribution changes
+  } as const,
+
+  /**
+   * Query Execution Metrics
+   */
+  EXECUTION_METRICS: {
+    COST_ACCURACY: 'query_plan_cost_accuracy',  // Estimated vs actual cost
+    NODE_SKEW: 'node_execution_skew',           // Bottleneck identification
+    PARALLELISM: 'parallelism_efficiency',      // CPU utilization
+    CACHE_CONTRIBUTION: 'cache_contribution',   // Cache hit effectiveness
+    PARTIAL_YIELD: 'partial_result_yield',      // Time to first result
+  } as const,
+
+  /**
+   * Reproducibility Metrics
+   */
+  REPRODUCIBILITY: {
+    DRIFT_RATE: 'reproducibility_drift_rate',   // Computation consistency
+    CONFIG_SENSITIVITY: 'config_sensitivity',   // Configuration impact
+    INVARIANT_VIOLATIONS: 'invariant_violations', // System invariant breaches
+  } as const,
+
+  /**
+   * Business Metrics
+   */
+  BUSINESS_METRICS: {
+    INSIGHT_ACTION: 'insight_action_metrics',   // User engagement with insights
+    ALERT_LATENCY: 'alert_to_action_latency',   // Response time
+    FALSE_POSITIVE: 'false_positive_tolerance', // Alert fatigue
+    REVENUE_RISK: 'revenue_at_risk',            // Financial impact estimation
+    TIER_SATURATION: 'tier_saturation',         // Usage vs limits
+    ALERT_EFFICIENCY: 'alert_cost_efficiency',  // Value per alert
+    UPGRADE_CORRELATION: 'upgrade_trigger',     // Feature-to-upgrade mapping
+    CHURN_PREDICTION: 'churn_after_alerts',     // Alert storm impact
+  } as const,
+
+  /**
+   * UI/UX Engagement
+   */
+  ENGAGEMENT: {
+    CONFIDENCE_READ: 'confidence_message_read_rate',
+    ATTRIBUTION_USAGE: 'attribution_panel_usage',
+    CONSOLE_ABANDONMENT: 'query_console_abandonment',
+    VISUALIZATION_DEPTH: 'visualization_interaction_depth',
+  } as const,
+} as const;
+
+/**
+ * Algorithm selection based on data sufficiency and tier
+ */
+export const selectAlgorithms = (
+  dataPoints: number,
+  tier: string
+): string[] => {
+  if (dataPoints < 30) {
+    return ['seasonal_hybrid_esd'];
+  } else if (dataPoints < 100) {
+    return ['seasonal_hybrid_esd', 'dynamic_time_warping'];
+  } else if (dataPoints < 500) {
+    return tier === 'enterprise' || tier === 'pro'
+      ? ['matrix_profile', 'bayesian_change_point', 'seasonal_hybrid_esd', 'copula_dependency']
+      : ['seasonal_hybrid_esd', 'dynamic_time_warping'];
+  } else {
+    return tier === 'enterprise'
+      ? ['matrix_profile', 'bayesian_change_point', 'seasonal_hybrid_esd', 'copula_dependency', 'dynamic_time_warping']
+      : ['seasonal_hybrid_esd', 'dynamic_time_warping'];
+  }
+};
