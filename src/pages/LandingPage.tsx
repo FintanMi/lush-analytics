@@ -1,10 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   TrendingUp, 
   Shield, 
@@ -120,7 +127,7 @@ export default function LandingPage() {
   const [isLoginMode, setIsLoginMode] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [userSelectedTier, setUserSelectedTier] = useState<typeof pricingTiers[0]>(pricingTiers[0]);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -251,11 +258,11 @@ export default function LandingPage() {
     if (!loginMode) {
       setUserSelectedTier(pricingTiers[0]);
     }
-    dialogRef.current?.showModal();
+    setDialogOpen(true);
   };
 
   const closeDialog = () => {
-    dialogRef.current?.close();
+    setDialogOpen(false);
     setIsLoginMode(false);
     setSelectedTier(null);
   };
@@ -331,34 +338,6 @@ export default function LandingPage() {
       setIsSubmitting(false);
     }
   };
-
-  // Close dialog on escape key or backdrop click
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    const handleCancel = (e: Event) => {
-      e.preventDefault();
-      closeDialog();
-    };
-
-    const handleBackdropClick = (e: MouseEvent) => {
-      const rect = dialog?.getBoundingClientRect();
-      if (rect && (
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom
-      )) {
-        closeDialog();
-      }
-    };
-
-    dialog?.addEventListener('cancel', handleCancel);
-    dialog?.addEventListener('click', handleBackdropClick);
-    return () => {
-      dialog?.removeEventListener('cancel', handleCancel);
-      dialog?.removeEventListener('click', handleBackdropClick);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen">
@@ -535,22 +514,19 @@ export default function LandingPage() {
       </section>
 
       {/* Dialog for CTA */}
-      <dialog 
-        ref={dialogRef}
-        className="backdrop:bg-black/50 bg-card rounded-xl shadow-2xl p-0 max-w-md w-full border border-border"
-      >
-        <div className="p-8 space-y-6">
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold tracking-tight">
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
               {isLoginMode ? 'Welcome Back' : 'Create Your Account'}
-            </h3>
-            <p className="text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription>
               {isLoginMode 
                 ? 'Log in to access your Lush Analytics dashboard.' 
                 : 'Sign up to get started with Lush Analytics.'
               }
-            </p>
-          </div>
+            </DialogDescription>
+          </DialogHeader>
           
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -659,8 +635,8 @@ export default function LandingPage() {
           <p className="text-xs text-center text-muted-foreground">
             By signing up, you agree to our Terms of Service and Privacy Policy
           </p>
-        </div>
-      </dialog>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
